@@ -1,4 +1,4 @@
-from dataset import *
+from dataset.dataset import Dataset
 import  torchvision.datasets as dsets
 import torchvision.transforms as transforms
 import torch.utils.data as tdata

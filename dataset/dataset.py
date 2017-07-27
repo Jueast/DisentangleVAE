@@ -1,10 +1,7 @@
-
-class Dataset:
+class Dataset(object):
     def __init__(self):
         self.name = "abstract"
         self.data_dims = []
-        self.width = -1
-        self.height = -1
         self.range = [0.0, 1.0]
         self._epoch = 0
     """ Get next training batch """
