@@ -21,12 +21,12 @@ class MnistDataset(Dataset):
                            transform=transforms.Compose([
                                 transforms.ToTensor()]))
         self.dataloder = tdata.DataLoader(data, batchsize, shuffle=True)
-        self.iter = iter(self.dataloder)
+        self.iter = iter(self.datsaloder)
         self._index = 0
 
     def next_batch(self):
         image, label = self.iter.next()
-        self._index += self.batchsize
+        self._index += 1
         if self._index >= len(self.dataloder):
             self._index = 0
             self._epoch += 1 
@@ -34,6 +34,9 @@ class MnistDataset(Dataset):
   
     def __len__(self):
         return len(self.dataloder)
+
+    def dataset_size(self):
+        return len(self.dataloder.dataset)
 
     def index(self):
         return self._index

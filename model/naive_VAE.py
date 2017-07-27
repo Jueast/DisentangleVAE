@@ -6,12 +6,11 @@ import torch
 import torch.nn as nn
 class NaiveVAE(VAE):
 
-    def __init__(self, input_dims, code_dims, ngpu,
+    def __init__(self, input_dims, code_dims,
                  hidden=400, activacation="lrelu",
                  decoder="Bernoulli"):
         super(NaiveVAE, self).__init__(input_dims,
-                                        code_dims,
-                                        ngpu)
+                                        code_dims)
         self.nx = np.prod(input_dims)
         self.nz = np.prod(code_dims)
         
@@ -68,4 +67,3 @@ class NaiveVAE(VAE):
 
         return BCE + KLD
 
-    

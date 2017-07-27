@@ -1,5 +1,6 @@
 import time
 from torch.autograd import Variable
+import torch.nn as nn
 import torch.optim as optim
 class Trainer(object):
 
@@ -7,6 +8,7 @@ class Trainer(object):
                  optimizer="Adam", lr=1e-3):
         if args.ngpus > 0:
             self.network = network.cuda()
+            self.gpuids = range(args.ngpus)
         else:
             self.network = network
         self.dataset = dataset
@@ -27,7 +29,11 @@ class Trainer(object):
             if self.cuda:
                 imagesv = imagesv.cuda()
             self.optimizer.zero_grad()
-            recon_x, mu, logvar = self.network(imagesv)
+            if self.args.ngpus > 0:
+                nn.parallel.data_parallel(self.network,
+                                          images,self.gpuids)
+            else:
+                recon_x, mu, logvar = self.network(imagesv)
             loss = self.network.loss(recon_x, images, mu, logvar)
             loss.backward()
             self.optimizer.step()
