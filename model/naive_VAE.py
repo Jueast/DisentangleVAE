@@ -1,9 +1,19 @@
 # Refer to pytorch/examples/VAE
 
-from abstract_VAE import VAE
+from model.abstract_VAE import VAE
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.autograd import Variable
+
+class StableBCELoss(nn.modules.Module):
+       def __init__(self):
+             super(StableBCELoss, self).__init__()
+       def forward(self, input, target):
+             neg_abs = - input.abs()
+             loss = input.clamp(min=0) - input * target + (1 + neg_abs.exp()).log()
+             return loss.sum()
+
 class NaiveVAE(VAE):
 
     def __init__(self, input_dims, code_dims,
@@ -11,20 +21,20 @@ class NaiveVAE(VAE):
                  decoder="Bernoulli"):
         super(NaiveVAE, self).__init__(input_dims,
                                         code_dims)
-        self.nx = np.prod(input_dims)
-        self.nz = np.prod(code_dims)
+        self.nx = int(np.prod(input_dims))
+        self.nz = int(np.prod(code_dims))
         
         if activacation == "lrelu":
             self.act = nn.LeakyReLU()
         else:
             self.act = nn.ReLU()
         
-        if distri == "Bernoulli":
+        if decoder == "Bernoulli":
             self.reconstruct_loss = nn.BCELoss()
         else:
             self.reconstruct_loss = nn.MSELoss()
         # encoding part
-        self.fc1 = nn.Linear(nx, hidden)
+        self.fc1 = nn.Linear(self.nx, hidden)
         # mu and sigma
         self.fc21 = nn.Linear(hidden, self.nz)
         self.fc22 = nn.Linear(hidden, self.nz)
@@ -49,7 +59,7 @@ class NaiveVAE(VAE):
 
     def decode(self, z):
         h3 = self.act(self.fc3(z))
-        return self.fc4(h3)
+        return self.fc4(h3).sigmoid()
     
     def forward(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
@@ -57,6 +67,7 @@ class NaiveVAE(VAE):
         return self.decode(z), mu, logvar
 
     def loss(self, recon_x, x, mu, logvar):
+        x = x.view(x.size(0), -1)
         BCE = self.reconstruct_loss(recon_x, x)
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -64,6 +75,5 @@ class NaiveVAE(VAE):
         # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
         KLD = torch.sum(KLD_element).mul_(-0.5)
-
         return BCE + KLD
 

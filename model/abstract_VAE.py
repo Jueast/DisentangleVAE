@@ -1,6 +1,6 @@
 import torch.nn as nn
 class VAE(nn.Module):
-    def __init__(self, input_dims, code_dims)：
+    def __init__(self, input_dims, code_dims):
         super(VAE, self).__init__()
         self.name = "abstract_VAE"
         self.input_dims = input_dims

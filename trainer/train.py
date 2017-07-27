@@ -24,7 +24,7 @@ class Trainer(object):
         iteration = 0
         while(iteration < self.maxiters):
             iter_time = time.time()
-            images, _ = self.dataset.next_batch
+            images, _ = self.dataset.next_batch()
             imagesv = Variable(images)
             if self.cuda:
                 imagesv = imagesv.cuda()
@@ -34,18 +34,17 @@ class Trainer(object):
                                           images,self.gpuids)
             else:
                 recon_x, mu, logvar = self.network(imagesv)
-            loss = self.network.loss(recon_x, images, mu, logvar)
+            loss = self.network.loss(recon_x, imagesv, mu, logvar)
             loss.backward()
             self.optimizer.step()
-
             if iteration % self.args.log_interval == 0:
                 print('Train Epoch: {}[{}/{}({}%)\t loss:{:6f}'.format(
-                    self.dataset.epoch,
-                    self.dataset.index * len(images),
-                    self.dataset.dataset_size,
-                    100. * self.dataset.index / len(self.dataset),
+                    self.dataset.epoch(),
+                    self.dataset.index() * len(images),
+                    self.dataset.dataset_size(),
+                    int(100. * self.dataset.index() / len(self.dataset)),
                     loss.data[0] / len(images)
                 ))
-            
+            iteration += 1
 
             

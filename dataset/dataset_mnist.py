@@ -15,19 +15,21 @@ class MnistDataset(Dataset):
         self.range = [0.0, 1.0]
         self.data_dims = [28, 28, 1]
         self.batchsize = batchsize
-        data = dsets.MNIST(root=data_root,
+        self.data = dsets.MNIST(root=data_root,
                            download=True,
                            train=train,
                            transform=transforms.Compose([
                                 transforms.ToTensor()]))
-        self.dataloder = tdata.DataLoader(data, batchsize, shuffle=True)
-        self.iter = iter(self.datsaloder)
+        self.dataloder = tdata.DataLoader(self.data, self.batchsize, shuffle=True)
+        self.iter = iter(self.dataloder)
         self._index = 0
 
     def next_batch(self):
         image, label = self.iter.next()
         self._index += 1
         if self._index >= len(self.dataloder):
+            self.dataloder = tdata.DataLoader(self.data, self.batchsize, shuffle=True)
+            self.iter = iter(self.dataloder)
             self._index = 0
             self._epoch += 1 
         return image, label
