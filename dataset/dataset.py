@@ -17,6 +17,10 @@ class Dataset(object):
         self.handle_unsupported_op()
         return None
 
+    def index(self):
+        self.handle_unsupported_op()
+        return None
+
     def display(self, image):
         return image
 
