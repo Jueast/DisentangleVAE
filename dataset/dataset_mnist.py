@@ -13,7 +13,7 @@ class MnistDataset(Dataset):
         data_root = join(dirname(realpath(__file__)), 'MNIST_data')
         self.name = "mnist"
         self.range = [0.0, 1.0]
-        self.data_dims = [28, 28, 1]
+        self.data_dims = [1, 28, 28]
         self.batchsize = batchsize
         self.data = dsets.MNIST(root=data_root,
                            download=True,

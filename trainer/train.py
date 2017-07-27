@@ -4,14 +4,15 @@ import torch.nn as nn
 import torch.optim as optim
 class Trainer(object):
 
-    def __init__(self, network, dataset, args,
-                 optimizer="Adam", lr=1e-3):
+    def __init__(self, network, dataset, visualizer, 
+                 args, optimizer="Adam", lr=1e-3):
         if args.ngpus > 0:
             self.network = network.cuda()
             self.gpuids = range(args.ngpus)
         else:
             self.network = network
         self.dataset = dataset
+        self.visualizer = visualizer
         self.args = args
         self.maxiters = args.maxiters
         self.cuda = args.ngpus > 0
@@ -30,7 +31,7 @@ class Trainer(object):
                 imagesv = imagesv.cuda()
             self.optimizer.zero_grad()
             if self.args.ngpus > 0:
-                nn.parallel.data_parallel(self.network,
+                recon_x, mu, logvar = nn.parallel.data_parallel(self.network,
                                           images,self.gpuids)
             else:
                 recon_x, mu, logvar = self.network(imagesv)
@@ -45,6 +46,7 @@ class Trainer(object):
                     int(100. * self.dataset.index() / len(self.dataset)),
                     loss.data[0] / len(images)
                 ))
+                self.visualizer.visualize(recon_x.sigmoid(), 10)
             iteration += 1
 
             

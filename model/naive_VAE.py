@@ -30,7 +30,7 @@ class NaiveVAE(VAE):
             self.act = nn.ReLU()
         
         if decoder == "Bernoulli":
-            self.reconstruct_loss = nn.BCELoss()
+            self.reconstruct_loss = StableBCELoss()
         else:
             self.reconstruct_loss = nn.MSELoss()
         # encoding part
@@ -59,7 +59,7 @@ class NaiveVAE(VAE):
 
     def decode(self, z):
         h3 = self.act(self.fc3(z))
-        return self.fc4(h3).sigmoid()
+        return self.fc4(h3)
     
     def forward(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
