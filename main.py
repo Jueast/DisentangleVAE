@@ -40,6 +40,6 @@ else:
     print("Unknown model")
     exit(-1)
 
-visualizer = Visualizer(args.savefolder, dataset.data_dims)
+visualizer = ManifoldVisualizer(args.savefolder, dataset.data_dims, args, network)
 trainer = Trainer(network, dataset, visualizer, args, lr=args.lr)
 trainer.train()

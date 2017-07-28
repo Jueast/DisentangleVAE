@@ -39,14 +39,15 @@ class Trainer(object):
             loss.backward()
             self.optimizer.step()
             if iteration % self.args.log_interval == 0:
-                print('Train Epoch: {}[{}/{}({}%)\t loss:{:6f}'.format(
+                print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}'.format(
+                    iteration,
                     self.dataset.epoch(),
                     self.dataset.index() * len(images),
                     self.dataset.dataset_size(),
                     int(100. * self.dataset.index() / len(self.dataset)),
                     loss.data[0] / len(images)
                 ))
-                self.visualizer.visualize(recon_x.sigmoid(), 10)
+                self.visualizer.visualize(recon_x.sigmoid(), 15)
             iteration += 1
 
             
