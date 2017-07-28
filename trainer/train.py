@@ -21,6 +21,8 @@ class Trainer(object):
                                         lr=lr)
 
     def train(self):
+        if self.args.ngpus > 0:
+            self.network.cuda()
         self.network.train()
         iteration = 0
         while(iteration < self.maxiters):

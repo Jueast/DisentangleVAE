@@ -4,7 +4,9 @@ parser.add_argument('--ngpus', type=int, default=4)
 parser.add_argument('--dataset', type=str, default='MNIST')
 parser.add_argument('--model', type=str, default='VAE')
 parser.add_argument('--savefolder', type=str, default='out')
+parser.add_argument('--hidden', type=int, default=400)
 parser.add_argument('--dimz', type=int, default=30)
+parser.add_argument('--beta', type=float, default=4.0)
 parser.add_argument('--num_rows', type=int, default=10)
 parser.add_argument('--visualizer', type=str, default="manifold")
 parser.add_argument('--lr',type=float, default=1e-3)
@@ -37,7 +39,10 @@ else:
     exit(-1)
 
 if args.model == 'VAE':
-    network = NaiveVAE(dataset.data_dims, [args.dimz])
+    network = NaiveVAE(dataset.data_dims, [args.dimz], hidden=args.hidden)
+elif args.model == 'betaVAE':
+    network = BetaVAE(dataset.data_dims, [args.dimz],
+                      hidden=args.hidden, beta=args.beta)
 else:
     print("Unknown model")
     exit(-1)

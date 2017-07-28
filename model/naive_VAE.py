@@ -13,7 +13,7 @@ class StableBCELoss(nn.modules.Module):
              neg_abs = - input.abs()
              loss = input.clamp(min=0) - input * target + (1 + neg_abs.exp()).log()
              return loss.sum()
-
+# All MLP!
 class NaiveVAE(VAE):
 
     def __init__(self, input_dims, code_dims,
@@ -77,3 +77,43 @@ class NaiveVAE(VAE):
         KLD = torch.sum(KLD_element).mul_(-0.5)
         return BCE + KLD
 
+
+# more flexiable VAE
+class BetaVAE(NaiveVAE):
+    def __init__(self, input_dims, code_dims, layers=[2, 2], beta=1.0,
+                 hidden=400, activacation="lrelu",
+                 decoder="Bernoulli"):
+
+        super(BetaVAE, self).__init__(input_dims, code_dims, 
+                                      hidden=400,
+                                      activacation="lrelu",
+                                      decoder="Bernoulli")
+        self.beta = beta
+        self.encode_layers = [self.fc1]
+        for i in range(layers[0]-2):
+            l = nn.Linear(hidden, hidden)
+            self.encode_layers.append(l)
+        self.decode_layers = [self.fc3]
+        for i in range(layers[0]-2):
+            l = nn.Linear(hidden, hidden)
+            self.decode_layers.append(l)
+
+    def encode(self, x):
+        h = x.view(x.size(0), -1)
+        for fc in self.encode_layers:
+            h = self.act(fc(h))
+        return self.fc21(h), self.fc22(h)
+
+    def decode(self, z):
+        h = z 
+        for fc in self.decode_layers:
+            h = self.act(fc(z))
+        return self.fc4(h)
+
+    def loss(self, recon_x, x, mu, logvar):
+        x = x.view(x.size(0), -1)
+        BCE = self.reconstruct_loss(recon_x, x)
+        
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5)
+        return BCE + self.beta * KLD

@@ -53,7 +53,7 @@ class ManifoldVisualizer(Visualizer):
         for i in range(self.parts):
             if self.flat_flag:
                 zcode = self.z.clone()
-                zcode[:,self.parts*2:self.parts*2+2] = self.code
+                zcode[:,i*2:i*2+2] = self.code
                 imgs = self.network.decode(Variable(zcode)).sigmoid().data
                 cuname = os.path.join(self.savefolder, self.name + '_part%d_current.png' % i)
                 epochname = os.path.join(self.savefolder, self.name + '_part%d_epoch%d.png' % (i, self.save_epoch))
