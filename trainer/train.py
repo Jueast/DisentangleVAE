@@ -47,7 +47,10 @@ class Trainer(object):
                     int(100. * self.dataset.index() / len(self.dataset)),
                     loss.data[0] / len(images)
                 ))
-                self.visualizer.visualize(recon_x.sigmoid(), 15)
+                if self.visualizer.name == "default": 
+                    self.visualizer.visualize(recon_x.sigmoid(), self.args.num_rows)
+                elif self.visualizer.name == "manifold":
+                    self.visualizer.visualize()
             iteration += 1
 
             

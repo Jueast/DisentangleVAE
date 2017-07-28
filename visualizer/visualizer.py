@@ -29,39 +29,36 @@ class ManifoldVisualizer(Visualizer):
         super(ManifoldVisualizer, self).__init__(savefolder, imgdim, args)
         self.network = network
         self.name = "manifold"
-        code_dims = self.network.code_dims[:]
-        z_dim = code_dims
-        z_dim.insert(0, 15 * 15)
-        if self.args.ngpus > 0:
-            self.z = torch.cuda.FloatTensor(*z_dim).normal_()
-        else:
-            self.z = torch.FloatTensor(*z_dim).normal_()
-    
-    def visualize(self, imgs, num_rows, parts=3):
-        code_dims = self.network.code_dims[:]
-        flat_flag = code_dims[0] >= 2 * parts
-        hierachical_flag = code_dims[0] >= parts and len(code_dims) > 1 and code_dims[1] >= 2 
-        assert flat_flag or hierachical_flag
+        self.parts = args.parts
 
+        z_dim = self.network.code_dims[:]
+        self.flat_flag = z_dim[0] >= 2 * self.parts
+        self.hierachical_flag = z_dim[0] >= self.parts and len(z_dim) > 1 and z_dim[1] >= 2 
+        assert self.flat_flag or self.hierachical_flag
+        z_dim.insert(0, self.args.num_rows * self.args.num_rows)
+
+        num_rows = self.args.num_rows
         code_x = torch.linspace(-2, 2, steps=num_rows).view(1, num_rows).repeat(num_rows, 1)
         code_y = code_x.t()
-        code = torch.stack([code_x, code_y], dim=2).view(-1,2)
-        z = self.z
-  #      z_dim = code_dims
-  #      z_dim.insert(0, num_rows * num_rows)
- #       if self.args.ngpus > 0:
-  #          z = torch.cuda.FloatTensor(*z_dim).normal_()
-  #      else:
-  #          z = torch.FloatTensor(*z_dim).normal_()
-        for i in range(parts):
-            if flat_flag:
-                zcode = z.clone()
-                zcode[:,parts*2:parts*2+2] = code
+        if self.args.ngpus > 0:
+            self.z = torch.cuda.FloatTensor(*z_dim).normal_()
+            self.code = torch.stack([code_x, code_y], dim=2).view(-1,2).cuda()
+        else:
+            self.z = torch.FloatTensor(*z_dim).normal_()
+            self.code = torch.stack([code_x, code_y], dim=2).view(-1,2)
+
+
+    def visualize(self):
+
+        for i in range(self.parts):
+            if self.flat_flag:
+                zcode = self.z.clone()
+                zcode[:,self.parts*2:self.parts*2+2] = self.code
                 imgs = self.network.decode(Variable(zcode)).sigmoid().data
                 cuname = os.path.join(self.savefolder, self.name + '_part%d_current.png' % i)
                 epochname = os.path.join(self.savefolder, self.name + '_part%d_epoch%d.png' % (i, self.save_epoch))
-                save_image(imgs.view(self.imagedim), cuname, nrow=num_rows)
-                save_image(imgs.view(self.imagedim), epochname, nrow=num_rows)
+                save_image(imgs.view(self.imagedim), cuname, nrow=self.args.num_rows)
+                save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
 
             else:
                 print("TODO: Hierachical")
