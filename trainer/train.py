@@ -19,7 +19,8 @@ class Trainer(object):
         if optimizer == "Adam":
             self.optimizer = optim.Adam(self.network.parameters(),
                                         lr=lr)
-
+        elif optimizer == "RMSProp":
+            pass
     def train(self):
         if self.args.ngpus > 0:
             self.network.cuda()

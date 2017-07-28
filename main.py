@@ -34,6 +34,8 @@ from visualizer import *
 
 if args.dataset == 'MNIST':
     dataset = MnistDataset(args.batchsize)
+elif args.dataset == 'SVHN':
+    dataset = SVHNDataset(args.batchsize)
 else:
     print("Unknown dataset")
     exit(-1)
