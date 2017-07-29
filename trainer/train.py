@@ -5,7 +5,7 @@ import torch.optim as optim
 class Trainer(object):
 
     def __init__(self, network, dataset, visualizer, 
-                 args, optimizer="Adam", lr=1e-3):
+                 args, optimizer="Adam", lr=1e-3, momentum=0.9, weight_decay=0):
         if args.ngpus > 0:
             self.network = network.cuda()
             self.gpuids = range(args.ngpus)
@@ -18,9 +18,17 @@ class Trainer(object):
         self.cuda = args.ngpus > 0
         if optimizer == "Adam":
             self.optimizer = optim.Adam(self.network.parameters(),
-                                        lr=lr)
-        elif optimizer == "RMSProp":
-            pass
+                                        lr=lr,
+                                        weight_decay=weight_decay)
+        elif optimizer == "RMSprop":
+            self.optimizer = optim.RMSprop(self.network.parameters(),
+                                           lr=lr,
+                                           weight_decay=weight_decay)
+        else:
+            self.optimizer = optim.SGD(self.network.parameters(),
+                                           lr=lr,
+                                           momentum=momentum,
+                                           weight_decay=weight_decay)
     def train(self):
         if self.args.ngpus > 0:
             self.network.cuda()
