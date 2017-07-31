@@ -49,14 +49,16 @@ class Trainer(object):
             loss = self.network.loss(recon_x, imagesv, mu, logvar)
             loss.backward()
             self.optimizer.step()
+            minfo = self.network.mutual_info_q(imagesv)
             if iteration % self.args.log_interval == 0:
-                print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}'.format(
+                print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}\tMInfo:{:6f}'.format(
                     iteration,
                     self.dataset.epoch(),
                     self.dataset.index() * len(images),
                     self.dataset.dataset_size(),
                     int(100. * self.dataset.index() / len(self.dataset)),
-                    loss.data[0] / len(images)
+                    loss.data[0] / len(images),
+                    minfo[0]
                 ))
                 if self.visualizer.name == "default": 
                     self.visualizer.visualize(recon_x.sigmoid(), self.args.num_rows)

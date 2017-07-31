@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from scipy.stats import norm
 
 class StableBCELoss(nn.modules.Module):
        def __init__(self):
@@ -76,6 +77,21 @@ class NaiveVAE(VAE):
         KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
         KLD = torch.sum(KLD_element).mul_(-0.5)
         return BCE + KLD
+
+    def mutual_info_q(self, x):
+        mu, logvar = self.encode(x.view(x.size(0), -1))
+        z = self.reparametrize(mu, logvar)
+        l = z.size(0)
+        z = z.repeat(l, 1, 1)
+        mu = mu.unsqueeze(2).repeat(1,1,l).transpose(1,2)
+        logvar = logvar.unsqueeze(2).repeat(1,1,l).transpose(1,2)
+        p_matrix =  ( - torch.sum((z - mu) ** 2  / logvar.exp(), dim=2) / 2.0 - 0.5 * torch.sum(logvar, dim=2)).exp_()
+        p_vector =  torch.sum(p_matrix, dim=1)
+        I = torch.FloatTensor([np.log(l)])
+        for i in range(l):
+            I += (p_matrix[i][i].log() - p_vector[i].log()).data / l
+        return I 
+
 
 
 # more flexiable VAE
