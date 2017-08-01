@@ -106,11 +106,11 @@ class BetaVAE(NaiveVAE):
                                       activacation="lrelu",
                                       decoder="Bernoulli")
         self.beta = beta
-        self.encode_layers = [self.fc1]
+        self.encode_layers = nn.ModuleList([self.fc1])
         for i in range(layers[0]-2):
             l = nn.Linear(hidden, hidden)
             self.encode_layers.append(l)
-        self.decode_layers = [self.fc3]
+        self.decode_layers = nn.ModuleList([self.fc3])
         for i in range(layers[0]-2):
             l = nn.Linear(hidden, hidden)
             self.decode_layers.append(l)

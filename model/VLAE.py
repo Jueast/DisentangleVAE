@@ -84,18 +84,25 @@ class VLAE(VAE):
         self.name = "VLAE"
         self.nx = int(np.prod(input_dims))
         self.beta = beta
-
+        if activacation == "lrelu":
+            self.act = nn.LeakyReLU()
+        else:
+            self.act = nn.ReLU()
         if decoder == "Bernoulli":
             self.reconstruct_loss = StableBCELoss()
         else:
             self.reconstruct_loss = nn.MSELoss()
 
-        self.encode_layers = [EncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation)] 
-        self.decode_layers = [DecodeLayer(0, hidden, code_dims[1], batchnorm, activacation)]
+        self.encode_layers = nn.ModuleList([EncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation)]) 
+        self.decode_layers = nn.ModuleList([])
         for i in range(code_dims[0]-1):
-            self.encode_layers.append(EncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation))
-            self.decode_layers.append(DecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation))
-        self.fc = nn.Linear(hidden, self.nx)
+            el = EncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
+            dl = DecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
+            self.encode_layers.append(el)
+            self.decode_layers.append(dl)
+    
+        self.fc1 = nn.Linear(code_dims[1], hidden)
+        self.fc2 = nn.Linear(hidden, self.nx)
 
     def encode(self, x):
         h = x.view(x.size(0), -1)
@@ -118,10 +125,10 @@ class VLAE(VAE):
     
     def decode(self, z):
         zcode = list(torch.chunk(z, self.code_dims[0], dim=1))[::-1]
-        h = None
-        for z, fc in zip(zcode, self.decode_layers):
+        h = self.act(self.fc1(zcode[0]))
+        for z, fc in zip(zcode[1:], self.decode_layers):
             h = fc(h, z)
-        return self.fc(h)
+        return self.fc2(h)
 
     def forward(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
