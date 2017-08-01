@@ -65,5 +65,11 @@ class ManifoldVisualizer(Visualizer):
             save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
         self.save_epoch += 1    
 
-        
-
+    def plot(self, data, name):
+        fname = os.path.join(self.plotfolder, name + ".png")
+        fig = plt.figure()
+        fig.suptitle(name, fontsize=20)
+        plt.xlabel('epoch')
+        plt.plot(data)
+        fig.savefig(fname, dpi=fig.dpi)
+        plt.close(fig)

@@ -34,6 +34,10 @@ class Trainer(object):
             self.network.cuda()
         self.network.train()
         iteration = 0
+        Loss_list = []
+        BCE_list = []
+        KLD_list = []
+        MInfo_list = []
         while(iteration < self.maxiters):
             iter_time = time.time()
             images, _ = self.dataset.next_batch()
@@ -46,10 +50,16 @@ class Trainer(object):
                                           images,self.gpuids)
             else:
                 recon_x, mu, logvar = self.network(imagesv)
-            loss = self.network.loss(recon_x, imagesv, mu, logvar)
+            loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar)
             loss.backward()
             self.optimizer.step()
             minfo = self.network.mutual_info_q(imagesv)
+            if iteration % (int(self.args.log_interval/10)) == 0:
+                Loss_list.append(loss.data[0] / len(images))
+                BCE_list.append(BCE.data[0] / len(images))
+                KLD_list.append(KLD.data[0] / len(images))
+                MInfo_list.append(minfo[0])
+
             if iteration % self.args.log_interval == 0:
                 print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}\tMInfo:{:6f}'.format(
                     iteration,
@@ -64,6 +74,10 @@ class Trainer(object):
                     self.visualizer.visualize(recon_x.sigmoid(), self.args.num_rows)
                 elif self.visualizer.name == "manifold":
                     self.visualizer.visualize()
+                self.visualizer.plot(Loss_list, "Loss")
+                self.visualizer.plot(BCE_list, "BCE")
+                self.visualizer.plot(KLD_list, "KLD")
+                self.visualizer.plot(MInfo_list, "MINFO")
             iteration += 1
 
             

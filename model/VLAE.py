@@ -137,7 +137,7 @@ class VLAE(VAE):
         # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
         KLD = torch.sum(KLD_element).mul_(-0.5)
-        return BCE + self.beta * KLD
+        return BCE + self.beta * KLD, BCE, KLD
 
     def mutual_info_q(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
