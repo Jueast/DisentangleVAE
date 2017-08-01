@@ -6,7 +6,8 @@ parser.add_argument('--model', type=str, default='VAE')
 parser.add_argument('--savefolder', type=str, default='out')
 parser.add_argument('--hidden', type=int, default=400)
 parser.add_argument('--dimz', type=int, default=30)
-parser.add_argument('--beta', type=float, default=4.0)
+parser.add_argument('--hlayers', type=int, default=3)
+parser.add_argument('--beta', type=float, default=1.0)
 parser.add_argument('--num_rows', type=int, default=10)
 parser.add_argument('--visualizer', type=str, default="manifold")
 parser.add_argument('--lr',type=float, default=1e-3)
@@ -45,6 +46,8 @@ if args.model == 'VAE':
 elif args.model == 'betaVAE':
     network = BetaVAE(dataset.data_dims, [args.dimz],
                       hidden=args.hidden, beta=args.beta)
+elif args.model == 'VLAE':
+    network = VLAE(dataset.data_dims, [args.hlayers, args.dimz], hidden=args.hidden, beta=args.beta)
 else:
     print("Unknown model")
     exit(-1)

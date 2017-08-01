@@ -1,19 +1,24 @@
 from matplotlib import pyplot as plt
-import os 
+import os
+import numpy as np 
 import scipy.misc as misc
 from torchvision.utils import save_image
 from torch.autograd import Variable
 import torch
+
 class Visualizer(object):
     def __init__(self, savefolder, imgdim, args):
         self.savefolder = savefolder
         self.save_epoch = 0
         self.name = "default"
+        self.plotfolder = os.path.join(savefolder, "plot")
         self.imagedim = imgdim
         self.imagedim.insert(0, -1)
         self.args = args
         if not os.path.isdir(savefolder):
             os.makedirs(savefolder)
+        if not os.path.isdir(self.plotfolder):
+            os.makedirs(self.plotfolder)
 
     def visualize(self, imgs, num_rows):
         imgs = imgs.data
@@ -31,7 +36,7 @@ class ManifoldVisualizer(Visualizer):
         self.name = "manifold"
         self.parts = args.parts
 
-        z_dim = self.network.code_dims[:]
+        z_dim = [int(np.prod(self.network.code_dims))]
         self.flat_flag = z_dim[0] >= 2 * self.parts
         self.hierachical_flag = z_dim[0] >= self.parts and len(z_dim) > 1 and z_dim[1] >= 2 
         assert self.flat_flag or self.hierachical_flag
@@ -51,18 +56,13 @@ class ManifoldVisualizer(Visualizer):
     def visualize(self):
 
         for i in range(self.parts):
-            if self.flat_flag:
-                zcode = self.z.clone()
-                zcode[:,i*2:i*2+2] = self.code
-                imgs = self.network.decode(Variable(zcode)).sigmoid().data
-                cuname = os.path.join(self.savefolder, self.name + '_part%d_current.png' % i)
-                epochname = os.path.join(self.savefolder, self.name + '_part%d_epoch%d.png' % (i, self.save_epoch))
-                save_image(imgs.view(self.imagedim), cuname, nrow=self.args.num_rows)
-                save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
-
-            else:
-                print("TODO: Hierachical")
-                exit("-1")
+            zcode = self.z.clone()
+            zcode[:,i*2:i*2+2] = self.code
+            imgs = self.network.decode(Variable(zcode)).sigmoid().data
+            cuname = os.path.join(self.savefolder, self.name + '_part%d_current.png' % i)
+            epochname = os.path.join(self.savefolder, self.name + '_part%d_epoch%d.png' % (i, self.save_epoch))
+            save_image(imgs.view(self.imagedim), cuname, nrow=self.args.num_rows)
+            save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
         self.save_epoch += 1    
 
         

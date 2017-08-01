@@ -22,6 +22,7 @@ class NaiveVAE(VAE):
                  decoder="Bernoulli"):
         super(NaiveVAE, self).__init__(input_dims,
                                         code_dims)
+        self.name = "NaiveVAE"
         self.nx = int(np.prod(input_dims))
         self.nz = int(np.prod(code_dims))
         
