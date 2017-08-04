@@ -100,6 +100,7 @@ ENV/
 # mypy
 dataset/MNIST_data
 dataset/SVHN_data
+dataset/dSprites_data
 *.png
 #vscode
 .vscode/

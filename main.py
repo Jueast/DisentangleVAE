@@ -37,6 +37,8 @@ if args.dataset == 'MNIST':
     dataset = MnistDataset(args.batchsize)
 elif args.dataset == 'SVHN':
     dataset = SVHNDataset(args.batchsize)
+elif args.dataset == 'DSPRITES':
+    dataset = DspritesDataset(args.batchsize)
 else:
     print("Unknown dataset")
     exit(-1)

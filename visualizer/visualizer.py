@@ -59,7 +59,7 @@ class ManifoldVisualizer(Visualizer):
             zcode = self.z.clone()
             zcode[:,i*2:i*2+2] = self.code
             imgs = self.network.decode(Variable(zcode)).sigmoid().data
-            cuname = os.path.join(self.savefolder, self.name + '_part%d_current.png' % i)
+            cuname = os.path.join(self.plotfolder, self.name + '_part%d_current.png' % i)
             epochname = os.path.join(self.savefolder, self.name + '_part%d_epoch%d.png' % (i, self.save_epoch))
             save_image(imgs.view(self.imagedim), cuname, nrow=self.args.num_rows)
             save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
