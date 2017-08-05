@@ -13,6 +13,27 @@ class StableBCELoss(nn.modules.Module):
         loss = input.clamp(min=0) - input * target + (1 + neg_abs.exp()).log()
         return loss.sum()
 
+class CNNEncodeLayer(nn.Module):
+    def __init__(self, input, output, zdim, batchnorm, activacation):
+        super(CNNEncodeLayer, self).__init__()
+        if activacation == "lrelu":
+            self.act = nn.LeakyReLU()
+        else:
+            self.act = nn.ReLU()
+        if batchnorm:
+            main = nn.Sequential(
+                nn.Conv2d(input, output, kernel=4, stride=2, padding=1),
+                nn.BatchNorm2d(output),
+                self.act,
+            )
+        else:
+            main = nn.Sequential(
+                nn.Conv2d(input, output, kernel=4, stride=2, padding=1),
+                self.act,
+            )
+        self.conv = nn.Conv2d(output, 1, kernel=1, stride=1, padding=0)
+        print ("Not implemented now...")
+        return 
 
 class EncodeLayer(nn.Module):
     def __init__(self, input, output, zdim, batchnorm, activacation):
