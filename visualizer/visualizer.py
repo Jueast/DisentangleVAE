@@ -73,3 +73,13 @@ class ManifoldVisualizer(Visualizer):
         plt.plot(data)
         fig.savefig(fname, dpi=fig.dpi)
         plt.close(fig)
+
+    def mulitplot(self, data, name):
+        fname = os.path.join(self.plotfolder, name + ".png")
+        fig = plt.figure()
+        fig.suptitle(name, fontsize=20)
+        plt.xlabel('epoch')
+        plt.plot(data)
+        plt.legend(["Z" + str(i) for i in range(len(data[0]))],loc='lower right')
+        fig.savefig(fname, dpi=fig.dpi)
+        plt.close(fig)
