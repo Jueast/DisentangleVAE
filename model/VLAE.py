@@ -154,17 +154,17 @@ class VLAE(VAE):
     def forward(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
         z = self.reparametrize(mu, logvar)
-        return self.decode(z), mu, logvar
+        return self.decode(z), mu, logvar, z
 
-    def loss(self, recon_x, x, mu, logvar):
+    def loss(self, recon_x, x, mu, logvar, z):
         x = x.view(x.size(0), -1)
-        BCE = self.reconstruct_loss(recon_x, x)
+        BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
         # see Appendix B from VAE paper:
         # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
         # https://arxiv.org/abs/1312.6114
         # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
         KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-        KLD = torch.sum(KLD_element).mul_(-0.5)
+        KLD = torch.sum(KLD_element).mul_(-0.5) / x.size(0)
         return BCE + self.beta * KLD, BCE, KLD
 
     def mutual_info_q(self, x):

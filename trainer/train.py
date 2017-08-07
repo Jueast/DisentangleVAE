@@ -47,18 +47,18 @@ class Trainer(object):
                 imagesv = imagesv.cuda()
             self.optimizer.zero_grad()
             if self.args.ngpus > 0:
-                recon_x, mu, logvar = nn.parallel.data_parallel(self.network,
+                recon_x, mu, logvar, z = nn.parallel.data_parallel(self.network,
                                           images,self.gpuids)
             else:
-                recon_x, mu, logvar = self.network(imagesv)
-            loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar)
+                recon_x, mu, logvar, z = self.network(imagesv)
+            loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
             loss.backward()
             self.optimizer.step()
             minfo, minfo_split = self.network.mutual_info_q(imagesv)
             if iteration % (int(self.args.log_interval/10)) == 0:
-                Loss_list.append(loss.data[0] / len(images))
-                BCE_list.append(BCE.data[0] / len(images))
-                KLD_list.append(KLD.data[0] / len(images))
+                Loss_list.append(loss.data[0])
+                BCE_list.append(BCE.data[0])
+                KLD_list.append(KLD.data[0])
                 MInfo_list.append(minfo[0])
                 MInfo_split_list.append(minfo_split.numpy())
             if iteration % self.args.log_interval == 0:
@@ -68,7 +68,7 @@ class Trainer(object):
                     self.dataset.index() * len(images),
                     self.dataset.dataset_size(),
                     int(100. * self.dataset.index() / len(self.dataset)),
-                    loss.data[0] / len(images),
+                    loss.data[0],
                     minfo[0]
                 ))
                 if self.visualizer.name == "default": 
@@ -77,7 +77,7 @@ class Trainer(object):
                     self.visualizer.visualize()
                 self.visualizer.plot(Loss_list, "Loss")
                 self.visualizer.plot(BCE_list, "BCE")
-                self.visualizer.plot(KLD_list, "KLD")
+                self.visualizer.plot(KLD_list, "KLD or MMD")
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
             iteration += 1

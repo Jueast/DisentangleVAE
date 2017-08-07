@@ -48,6 +48,9 @@ if args.model == 'VAE':
 elif args.model == 'betaVAE':
     network = BetaVAE(dataset.data_dims, [args.dimz],
                       hidden=args.hidden, beta=args.beta)
+elif args.model == 'MMDVAE':
+    network = MMDVAE(dataset.data_dims, [args.dimz],
+                      hidden=args.hidden, beta=args.beta)
 elif args.model == 'VLAE':
     network = VLAE(dataset.data_dims, [args.hlayers, args.dimz], hidden=args.hidden, beta=args.beta)
 else:
