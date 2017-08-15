@@ -52,6 +52,17 @@ class ManifoldVisualizer(Visualizer):
             self.z = torch.FloatTensor(*z_dim).normal_()
             self.code = torch.stack([code_x, code_y], dim=2).view(-1,2)
 
+    def make_code(self, num_rows):
+        z_dim = [int(np.prod(self.network.code_dims))]
+        code_x = torch.linspace(-2, 2, steps=num_rows).view(1, num_rows).repeat(num_rows, 1)
+        code_y = code_x.t()
+        if self.args.ngpus > 0:
+            z = torch.cuda.FloatTensor(*z_dim).normal_()
+            code = torch.stack([code_x, code_y], dim=2).view(-1,2).cuda()
+        else:
+            z = torch.FloatTensor(*z_dim).normal_()
+            code = torch.stack([code_x, code_y], dim=2).view(-1,2)
+        return code
 
     def visualize(self):
 
@@ -64,6 +75,22 @@ class ManifoldVisualizer(Visualizer):
             save_image(imgs.view(self.imagedim), cuname, nrow=self.args.num_rows)
             save_image(imgs.view(self.imagedim), epochname, nrow=self.args.num_rows)
         self.save_epoch += 1    
+
+    def visualize_reconstruct(self, imgs):
+        num_rows = int(len(imgs) ** 0.5)
+        code = self.make_code(num_rows)
+        recons,_,_,zcode = self.network(imgs)
+        recons = recons.sigmoid().data
+        cuname = os.path.join(self.plotfolder, 'recon_' + self.name + '_current.png')
+        save_image(recons.view(self.imagedim), cuname, nrow=num_rows)
+        cuname = os.path.join(self.plotfolder, 'original_' + self.name + '_current.png')
+        save_image(imgs.data.view(self.imagedim), cuname, nrow=num_rows)
+        for i in range(self.parts):
+            zcode[:,i*2:i*2+2] = code
+            recons = self.network.decode(zcode).sigmoid().data
+            cuname = os.path.join(self.plotfolder, 'recon_' + self.name + '_part%d_current.png' % i)
+            save_image(recons.view(self.imagedim), cuname, nrow=num_rows)
+
 
     def plot(self, data, name):
         fname = os.path.join(self.plotfolder, name + ".png")

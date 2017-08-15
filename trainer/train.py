@@ -43,6 +43,8 @@ class Trainer(object):
             iter_time = time.time()
             images, _ = self.dataset.next_batch()
             imagesv = Variable(images)
+            if iteration == 0:
+                spv = imagesv
             if self.cuda:
                 imagesv = imagesv.cuda()
             self.optimizer.zero_grad()
@@ -80,6 +82,7 @@ class Trainer(object):
                 self.visualizer.plot(KLD_list, "KLD or MMD")
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
+                self.visualizer.visualize_reconstruct(spv)
             iteration += 1
 
             
