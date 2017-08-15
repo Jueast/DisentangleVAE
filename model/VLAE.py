@@ -104,6 +104,7 @@ class VLAE(VAE):
         super(VLAE, self).__init__(input_dims, code_dims)
         self.name = "VLAE"
         self.nx = int(np.prod(input_dims))
+        self.nz = int(np.prod(code_dims))
         self.beta = beta
         if activacation == "lrelu":
             self.act = nn.LeakyReLU()
@@ -141,6 +142,7 @@ class VLAE(VAE):
             eps = torch.cuda.FloatTensor(std.size()).normal_()
         else:
             eps = torch.FloatTensor(std.size()).normal_()
+#        eps[:,-2:-1] = (eps[:,-2:-1] - mu.data[:,-2:-1]) / std.data[:,-2:-1]
         eps = Variable(eps)
         return eps.mul(std).add_(mu) 
     
@@ -186,3 +188,26 @@ class VLAE(VAE):
         # q(z_i) is not independent..
         # assert np.allclose(I.numpy(), np.sum(I_split.numpy()))
         return I, I_split
+
+
+class MMDVLAE(VLAE):
+    def compute_kernel(self, x, y):
+        x_size = x.size(0)
+        y_size = y.size(0)
+        dim = x.size(1)
+        tiled_x = x.unsqueeze(1).repeat(1, y_size, 1)
+        tiled_y = y.unsqueeze(0).repeat(x_size, 1, 1)
+        return ((-(tiled_x - tiled_y) ** 2).mean(dim=2) / float(dim)).exp_()
+    
+    def compute_mmd(self, x, y, sigma_sqr=1.0):
+        x_kernel = self.compute_kernel(x, x)
+        y_kernel = self.compute_kernel(y, y)
+        xy_kernel = self.compute_kernel(x, y)
+        return torch.mean(x_kernel) + torch.mean(y_kernel) - 2 * torch.mean(xy_kernel)
+    def loss(self, recon_x, x, mu, logvar, z):
+        x = x.view(x.size(0), -1)
+        BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
+        
+        true_samples = Variable(torch.FloatTensor(x.size(0), self.nz).normal_())
+        MMD = self.compute_mmd(true_samples, z)
+        return BCE + self.beta *  MMD , BCE, MMD

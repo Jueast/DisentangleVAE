@@ -54,6 +54,8 @@ elif args.model == 'MMDVAE':
                       hidden=args.hidden, beta=args.beta)
 elif args.model == 'VLAE':
     network = VLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+elif args.model == 'MMDVLAE':
+    network = MMDVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
 else:
     print("Unknown model")
     exit(-1)
