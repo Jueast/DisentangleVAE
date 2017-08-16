@@ -110,6 +110,7 @@ class DecodeLayer(nn.Module):
 class Discriminator(nn.Module):
 
     def __init__(self, input_dims, hidden=400, activacation="lrelu", batchnorm=False):
+        super(Discriminator, self).__init__()
         if activacation == "lrelu":
             self.act = nn.LeakyReLU()
         else:
@@ -131,18 +132,18 @@ class Discriminator(nn.Module):
         out = self.main(input).mean(0)
         return out
     
-
 class VAEGAN(VAE):
 
     def __init__(self, input_dims, code_dims, beta=1.0, gamma=0.75,
                  hidden=400, activacation="lrelu",
                  decoder="Bernoulli", batchnorm=False):
 
-        super(VLAE, self).__init__(input_dims, code_dims)
+        super(VAEGAN, self).__init__(input_dims, code_dims)
         self.name = "VAEGAN"
         self.nx = int(np.prod(input_dims))
         self.nz = int(np.prod(code_dims))
         self.beta = beta
+        self.gamma = gamma
         if activacation == "lrelu":
             self.act = nn.LeakyReLU()
         else:
@@ -153,20 +154,22 @@ class VAEGAN(VAE):
             self.reconstruct_loss = nn.MSELoss()
 
         self.encoder = nn.ModuleList([EncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation)]) 
+        self.decoder_list = nn.ModuleList([])
         self.decoder = nn.ModuleList([])
         for i in range(code_dims[0]-1):
             el = EncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
             dl = DecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
             self.encoder.append(el)
-            self.decoder.append(dl)
-    
+            self.decoder_list.append(dl)
+        self.decoder.append(self.decoder_list)
         self.fc1 = nn.Linear(code_dims[1], hidden)
         self.fc2 = nn.Linear(hidden, self.nx)
-        self.decoder.append(self.fc1, self.fc2)
+        self.decoder.append(self.fc1)
+        self.decoder.append(self.fc2)
         
         self.D = Discriminator(input_dims, hidden, activacation, batchnorm)
         
-        self.D.apply(weight_init)
+        self.D.apply(weights_init)
         
     def encode(self, x):
         h = x.view(x.size(0), -1)
@@ -191,7 +194,7 @@ class VAEGAN(VAE):
     def decode(self, z):
         zcode = list(torch.chunk(z, self.code_dims[0], dim=1))[::-1]
         h = self.act(self.fc1(zcode[0]))
-        for z, fc in zip(zcode[1:], self.decoder):
+        for z, fc in zip(zcode[1:], self.decoder_list):
             h = fc(h, z)
         return self.fc2(h)
 
@@ -216,12 +219,21 @@ class VAEGAN(VAE):
             eps = torch.FloatTensor(x.size(0), self.nz).normal_()
         recon_pz = self.decode(Variable(eps))
         return 2 * self.D(x) - self.D(recon_x) - self.D(recon_pz)
-    
+    def encoder_loss(self, recon_x, x, mu, logvar, z):
+        BCE = self.match_loss(recon_x, x)
+        KLD = self.prior_loss(mu, logvar, z)
+        return BCE + self.beta * KLD
+ 
+    def decoder_loss(self, recon_x, x, mu, logvar, z):
+        BCE = self.match_loss(recon_x, x)
+        GAN_loss = self.GAN_loss(recon_x, x)
+        return  BCE * self.gamma + GAN_loss
+
     def loss(self, recon_x, x, mu, logvar, z):
         BCE = self.match_loss(recon_x, x)
         KLD = self.prior_loss(mu, logvar, z)
         GAN_loss = self.GAN_loss(recon_x, x)
-        return BCE + self.beta * KLD, BCE * gamma + GAN_loss, GAN_loss, BCE, KLD
+        return BCE + self.beta * KLD, BCE * self.gamma + GAN_loss, GAN_loss, BCE, KLD
     
     def mutual_info_q(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
