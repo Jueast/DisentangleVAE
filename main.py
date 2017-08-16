@@ -9,6 +9,7 @@ parser.add_argument('--hidden', type=int, default=400)
 parser.add_argument('--dimz', type=int, default=30)
 parser.add_argument('--hlayers', type=int, default=3)
 parser.add_argument('--beta', type=float, default=1.0)
+parser.add_argument('--gamma', type=float, default=0.75)
 parser.add_argument('--num_rows', type=int, default=10)
 parser.add_argument('--visualizer', type=str, default="manifold")
 parser.add_argument('--lr',type=float, default=1e-3)
@@ -56,6 +57,8 @@ elif args.model == 'VLAE':
     network = VLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
 elif args.model == 'MMDVLAE':
     network = MMDVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+elif args.model == 'VAEGAN':
+    network = VAEGAN(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta, gamma=args.gamma)
 else:
     print("Unknown model")
     exit(-1)

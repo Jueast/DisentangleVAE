@@ -5,6 +5,17 @@ import torch.nn as nn
 from torch.autograd import Variable
 from scipy.stats import norm
 
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        #m.weight.data.normal_(0.0, clamp_upper-clamp_lower)
+        nn.init.xavier_uniform(m.weight)
+    elif classname.find('BatchNorm') != -1:
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+    elif classname.find('Linear') != -1:
+        nn.init.xavier_uniform(m.weight)
+
 class StableBCELoss(nn.modules.Module):
     def __init__(self):
         super(StableBCELoss, self).__init__()
@@ -103,14 +114,27 @@ class Discriminator(nn.Module):
             self.act = nn.LeakyReLU()
         else:
             self.act = nn.ReLU()
-        self.main = 1
-        return 
+            
+        self.nx = int(np.prod(input_dims))
+        self.main = nn.Sequential(
+            nn.Linear(self.nx, hidden),
+            self.act,
+            nn.Linear(hidden, hidden),
+            self.act,
+            nn.Linear(hidden, hidden),
+            self.act,
+            nn.Linear(hidden, 1)
+        )
 
-
+    def forward(self, input):
+        input = input.view(input.size(0), -1)
+        out = self.main(input).mean(0)
+        return out
+    
 
 class VAEGAN(VAE):
 
-    def __init__(self, input_dims, code_dims, beta=1.0,
+    def __init__(self, input_dims, code_dims, beta=1.0, gamma=0.75,
                  hidden=400, activacation="lrelu",
                  decoder="Bernoulli", batchnorm=False):
 
@@ -128,22 +152,27 @@ class VAEGAN(VAE):
         else:
             self.reconstruct_loss = nn.MSELoss()
 
-        self.encode_layers = nn.ModuleList([EncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation)]) 
-        self.decode_layers = nn.ModuleList([])
+        self.encoder = nn.ModuleList([EncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation)]) 
+        self.decoder = nn.ModuleList([])
         for i in range(code_dims[0]-1):
             el = EncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
             dl = DecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation)
-            self.encode_layers.append(el)
-            self.decode_layers.append(dl)
+            self.encoder.append(el)
+            self.decoder.append(dl)
     
         self.fc1 = nn.Linear(code_dims[1], hidden)
         self.fc2 = nn.Linear(hidden, self.nx)
-
+        self.decoder.append(self.fc1, self.fc2)
+        
+        self.D = Discriminator(input_dims, hidden, activacation, batchnorm)
+        
+        self.D.apply(weight_init)
+        
     def encode(self, x):
         h = x.view(x.size(0), -1)
         mu_list = []
         logvar_list = []
-        for fc in self.encode_layers:
+        for fc in self.encoder:
             h, mu, logvar = fc(h)
             mu_list.append(mu)
             logvar_list.append(logvar)
@@ -162,7 +191,7 @@ class VAEGAN(VAE):
     def decode(self, z):
         zcode = list(torch.chunk(z, self.code_dims[0], dim=1))[::-1]
         h = self.act(self.fc1(zcode[0]))
-        for z, fc in zip(zcode[1:], self.decode_layers):
+        for z, fc in zip(zcode[1:], self.decoder):
             h = fc(h, z)
         return self.fc2(h)
 
@@ -170,18 +199,30 @@ class VAEGAN(VAE):
         mu, logvar = self.encode(x.view(x.size(0), -1))
         z = self.reparametrize(mu, logvar)
         return self.decode(z), mu, logvar, z
-
-    def loss(self, recon_x, x, mu, logvar, z):
+    def prior_loss(self, mu, logvar, z):
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5) / mu.size(0)
+        return KLD
+    def match_loss(self, recon_x, x):
         x = x.view(x.size(0), -1)
         BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
-        # see Appendix B from VAE paper:
-        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-        # https://arxiv.org/abs/1312.6114
-        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
-        KLD = torch.sum(KLD_element).mul_(-0.5) / x.size(0)
-        return BCE + self.beta * KLD, BCE, KLD
-
+        return BCE 
+    def GAN_loss(self, recon_x, x):
+        x = x.view(x.size(0), -1)
+        recon_x = recon_x.view(recon_x.size(0), -1)
+        if isinstance(x, torch.cuda.FloatTensor):
+            eps = torch.cuda.FloatTensor(x.size(0), self.nz).normal_()
+        else:
+            eps = torch.FloatTensor(x.size(0), self.nz).normal_()
+        recon_pz = self.decode(Variable(eps))
+        return 2 * self.D(x) - self.D(recon_x) - self.D(recon_pz)
+    
+    def loss(self, recon_x, x, mu, logvar, z):
+        BCE = self.match_loss(recon_x, x)
+        KLD = self.prior_loss(mu, logvar, z)
+        GAN_loss = self.GAN_loss(recon_x, x)
+        return BCE + self.beta * KLD, BCE * gamma + GAN_loss, GAN_loss, BCE, KLD
+    
     def mutual_info_q(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
         z = self.reparametrize(mu, logvar)
