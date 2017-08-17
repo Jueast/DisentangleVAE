@@ -97,8 +97,8 @@ class Trainer(object):
         KLD_list = []
         MInfo_list = []
         MInfo_split_list = []
-        clamp_upper = 0.05
-        clamp_lower = -0.05
+        clamp_upper = 0.01
+        clamp_lower = -0.01
         Encoder_parameters = self.network.encoder.parameters()
         Decoder_parameters = self.network.decoder.parameters()
         D_parameters = self.network.D.parameters()
@@ -123,7 +123,7 @@ class Trainer(object):
             encoder_loss, decoder_loss, GAN_loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
 
         
-            # regForBackward(Encoder_parameters, True)
+            #regForBackward(Encoder_parameters, True)
             self.encoder_optimizer.zero_grad()
             encoder_loss.backward(one, retain_graph=True)
             self.encoder_optimizer.step()
@@ -136,18 +136,13 @@ class Trainer(object):
             #regForBackward(Decoder_parameters, False)
 
             #regForBackward(D_parameters, True)
-            for i in range(4):
+            for i in range(5):
                 self.D_optimizer.zero_grad()
-                encoder_loss, decoder_loss, GAN_loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
-                GAN_loss.backward(mone, retain_graph=True)
+                GAN_loss = self.network.GAN_loss(imagesv)
+                GAN_loss.backward(mone)
                 self.D_optimizer.step()
-                for p in self.network.D.parameters():
-                    p.data.clamp_(clamp_lower, clamp_upper)
-            self.D_optimizer.zero_grad()
-            GAN_loss.backward(mone)
-            self.D_optimizer.step()
-            for p in self.network.D.parameters():
-                p.data.clamp_(clamp_lower, clamp_upper)
+        #    for p in self.network.D.parameters():
+        #        p.data.clamp_(clamp_lower, clamp_upper)
             #regForBackward(D_parameters, False)
             minfo, minfo_split = self.network.mutual_info_q(imagesv)
             if iteration % (int(self.args.log_interval/10)) == 0:

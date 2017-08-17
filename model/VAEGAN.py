@@ -2,7 +2,7 @@ from model.abstract_VAE import VAE
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
+from torch.autograd import Variable, grad
 from scipy.stats import norm
 
 def weights_init(m):
@@ -210,15 +210,22 @@ class VAEGAN(VAE):
         x = x.view(x.size(0), -1)
         BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
         return BCE 
-    def GAN_loss(self, recon_x, x):
+    def GAN_loss(self, x):
         x = x.view(x.size(0), -1)
-        recon_x = recon_x.view(recon_x.size(0), -1)
         if isinstance(x, torch.cuda.FloatTensor):
             eps = torch.cuda.FloatTensor(x.size(0), self.nz).normal_()
         else:
             eps = torch.FloatTensor(x.size(0), self.nz).normal_()
+        alpha = torch.FloatTensor(x.size(0), 1).uniform_(0,1)
+        alpha = alpha.expand(x.size(0), x.size(1))
         recon_pz = self.decode(Variable(eps))
-        return 2 * self.D(x) - self.D(recon_x) - self.D(recon_pz)
+        interpolates = alpha * x.data + (1-alpha) * recon_pz.data
+        interpolates = Variable(interpolates, requires_grad=True)
+        D_interpolates = self.D(interpolates)
+        gradients = grad(D_interpolates, interpolates,create_graph=True)[0]
+        slopes = torch.sum(gradients ** 2, 1).sqrt()
+        gradient_penalty = (torch.mean(slopes - 1.) ** 2)
+        return self.D(x) - self.D(recon_pz) - 10 * gradient_penalty
     def encoder_loss(self, recon_x, x, mu, logvar, z):
         BCE = self.match_loss(recon_x, x)
         KLD = self.prior_loss(mu, logvar, z)
@@ -226,14 +233,14 @@ class VAEGAN(VAE):
  
     def decoder_loss(self, recon_x, x, mu, logvar, z):
         BCE = self.match_loss(recon_x, x)
-        GAN_loss = self.GAN_loss(recon_x, x)
-        return  BCE * self.gamma + GAN_loss
+        GAN_loss = - self.D(reconx)
+        return  BCE + GAN_loss * self.gamma
 
     def loss(self, recon_x, x, mu, logvar, z):
         BCE = self.match_loss(recon_x, x)
         KLD = self.prior_loss(mu, logvar, z)
-        GAN_loss = self.GAN_loss(recon_x, x)
-        return BCE + self.beta * KLD, BCE * self.gamma + GAN_loss, GAN_loss, BCE, KLD
+        GAN_loss = self.GAN_loss(x)
+        return BCE + self.beta * KLD, BCE + GAN_loss * self.gamma , GAN_loss, BCE, KLD
     
     def mutual_info_q(self, x):
         mu, logvar = self.encode(x.view(x.size(0), -1))
