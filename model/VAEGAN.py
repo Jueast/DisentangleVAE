@@ -262,4 +262,3 @@ class VAEGAN(VAE):
         # assert np.allclose(I.numpy(), np.sum(I_split.numpy()))
         return I, I_split
 
-

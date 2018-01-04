@@ -14,7 +14,7 @@ class StableBCELoss(nn.modules.Module):
         return loss.sum()
 
 class CNNEncodeLayer(nn.Module):
-    def __init__(self, input, output, zdim, batchnorm, activacation):
+    def __init__(self, input, output, zdim, batchnorm, activacation, out_img_dims):
         super(CNNEncodeLayer, self).__init__()
         if activacation == "lrelu":
             self.act = nn.LeakyReLU()
@@ -22,18 +22,70 @@ class CNNEncodeLayer(nn.Module):
             self.act = nn.ReLU()
         if batchnorm:
             main = nn.Sequential(
-                nn.Conv2d(input, output, kernel=4, stride=2, padding=1),
+                nn.Conv2d(input, output,  4, stride=2, padding=1),
+                nn.BatchNorm2d(output),
+                self.act,
+            )
+            main2 = nn.Sequential(
+                nn.Conv2d(input, output,  4, stride=2, padding=1),
                 nn.BatchNorm2d(output),
                 self.act,
             )
         else:
             main = nn.Sequential(
-                nn.Conv2d(input, output, kernel=4, stride=2, padding=1),
+                nn.Conv2d(input, output,  4, stride=2, padding=1),
                 self.act,
             )
-        self.conv = nn.Conv2d(output, 1, kernel=1, stride=1, padding=0)
-        print ("Not implemented now...")
+            main2 = nn.Sequential(
+                nn.Conv2d(input, output,  4, stride=2, padding=1),
+                self.act,
+            )
+        self.main = main 
+        self.main2 = main2
+        self.fc1 = nn.Linear(output * out_img_dims[0] * out_img_dims[1], zdim)
+        self.fc2 = nn.Linear(output * out_img_dims[0] * out_img_dims[1], zdim)
+        self.out_img_dims = out_img_dims
+        # print ("Not implemented now...")
         return 
+    def forward(self, x):
+
+        h = self.main(x)
+        h2 = self.main2(x)
+        return h, self.fc1(h2.view(h2.size(0), -1)), self.fc2(h2.view(h2.size(0), -1))
+
+class CNNDecodeLayer(nn.Module):
+    def __init__(self, input, output, zdim, batchnorm, activacation, input_img_dims):
+        super(CNNDecodeLayer, self).__init__()
+        
+        if activacation == "lrelu":
+            self.act = nn.LeakyReLU()
+        else:
+            self.act = nn.ReLU()
+        if input == 0:
+            input = output
+            self.fc = nn.Linear(zdim, input * input_img_dims[0] * input_img_dims[0])
+        else:
+            self.fc = nn.Linear(zdim, input * input_img_dims[0] * input_img_dims[0])
+            input *= 2
+        if batchnorm:
+            main = nn.Sequential(
+                nn.ConvTranspose2d(input, output,  4, stride=2, padding=1),
+                nn.BatchNorm1d(output),
+                self.act,
+            )
+        else:
+            main = nn.Sequential(
+                nn.ConvTranspose2d(input, output,  4, stride=2, padding=1),
+                self.act,
+            )
+        self.main = main
+        self.input_img_dims = input_img_dims
+    def forward(self, input, z):
+        if input is None:
+            input = self.act(self.fc(z).view(z.size(0), -1, self.input_img_dims[0], self.input_img_dims[1]))
+        else:
+            input = torch.cat([input, self.fc(z).view(z.size(0), -1, self.input_img_dims[0], self.input_img_dims[1])], 1)
+        return self.main(input)
 
 class EncodeLayer(nn.Module):
     def __init__(self, input, output, zdim, batchnorm, activacation):
@@ -211,3 +263,108 @@ class MMDVLAE(VLAE):
         true_samples = Variable(torch.FloatTensor(x.size(0), self.nz).normal_())
         MMD = self.compute_mmd(true_samples, z)
         return BCE + self.beta *  MMD , BCE, MMD
+
+class CNNVLAE(VAE):
+    def __init__(self, input_dims, code_dims, beta=1.0,
+                 hidden=400, activacation="lrelu",
+                 decoder="Bernoulli", batchnorm=False):
+
+        super(CNNVLAE, self).__init__(input_dims, code_dims)
+        self.name = "CNNVLAE"
+        self.nx = input_dims[0]
+        self.nz = int(np.prod(code_dims))
+        self.beta = beta
+        if activacation == "lrelu":
+            self.act = nn.LeakyReLU()
+        else:
+            self.act = nn.ReLU()
+        if decoder == "Bernoulli":
+            self.reconstruct_loss = StableBCELoss()
+        else:
+            self.reconstruct_loss = nn.MSELoss()
+
+        assert(input_dims[1] == input_dims[2])
+        l = input_dims[1]
+        l = int(l/2)
+        self.encode_layers = [CNNEncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation, (l, l))]
+        self.decode_layers = [CNNDecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))]
+        for i in range(code_dims[0]-2):
+            l = int(l/2)
+            el = CNNEncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))
+            dl = CNNDecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))
+            self.encode_layers.append(el)
+            self.decode_layers.insert(0, dl)
+        self.encode_layers = nn.ModuleList(self.encode_layers)
+        self.decode_layers = nn.ModuleList(self.decode_layers)
+        l = int(l/2)
+        self.encode_layers.append(CNNEncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l)))
+        self.conv1 = CNNDecodeLayer(0, hidden, code_dims[1], batchnorm, activacation, (l, l))
+        self.conv2 = nn.ConvTranspose2d(hidden, 1, 1, 1)
+
+    def encode(self, x):
+        h = x
+        mu_list = []
+        logvar_list = []
+        for conv in self.encode_layers:
+            h, mu, logvar = conv(h)
+            mu_list.append(mu)
+            logvar_list.append(logvar)
+        return torch.cat(mu_list, dim=1), torch.cat(logvar_list, dim=1)
+
+    def reparametrize(self, mu, logvar):
+        std = logvar.mul(0.5).exp_()
+        if isinstance(mu, torch.cuda.FloatTensor):
+            eps = torch.cuda.FloatTensor(std.size()).normal_()
+        else:
+            eps = torch.FloatTensor(std.size()).normal_()
+#        eps[:,-2:-1] = (eps[:,-2:-1] - mu.data[:,-2:-1]) / std.data[:,-2:-1]
+        eps = Variable(eps)
+        return eps.mul(std).add_(mu) 
+    
+    def decode(self, z):
+
+        zcode = list(torch.chunk(z, self.code_dims[0], dim=1))[::-1]
+        h = self.act(self.conv1(None, zcode[0]))
+        for z, conv in zip(zcode[1:], self.decode_layers):
+            h = conv(h, z)
+        return self.conv2(h)
+
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparametrize(mu, logvar)
+        return self.decode(z), mu, logvar, z
+
+    def loss(self, recon_x, x, mu, logvar, z):
+        x = x.view(x.size(0), -1)
+        recon_x = recon_x.view(recon_x.size(0), -1)
+        BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
+        # see Appendix B from VAE paper:
+        # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+        # https://arxiv.org/abs/1312.6114
+        # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+        KLD_element = mu.pow(2).add_(logvar.exp()).mul_(-1).add_(1).add_(logvar)
+        KLD = torch.sum(KLD_element).mul_(-0.5) / x.size(0)
+        return BCE + self.beta * KLD, BCE, KLD
+
+    def mutual_info_q(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparametrize(mu, logvar)
+        z = z.view(z.size(0), -1)
+        mu = mu.view(mu.size(0), -1)
+        logvar = logvar.view(logvar.size(0), -1)
+        l = z.size(0)
+        z = z.repeat(l, 1, 1)
+        mu = mu.unsqueeze(2).repeat(1,1,l).transpose(1,2)
+        logvar = logvar.unsqueeze(2).repeat(1,1,l).transpose(1,2)
+        p_matrix =  ( - torch.sum((z - mu) ** 2  / logvar.exp(), dim=2) / 2.0 - 0.5 * torch.sum(logvar, dim=2)).exp_()
+        p_split_matrix = (- (z - mu) ** 2  / logvar.exp() / 2.0 - 0.5 * logvar ).exp_()
+        p_split_vector = torch.sum(p_split_matrix, dim=1)
+        p_vector =  torch.sum(p_matrix, dim=1)
+        I = torch.FloatTensor([np.log(l)])
+        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2)))
+        for i in range(l):
+            I += (p_matrix[i][i].log() - p_vector[i].log()).data / l
+            I_split += (p_split_matrix[i][i].log() - p_split_vector[i].log()).data / l
+        # q(z_i) is not independent..
+        # assert np.allclose(I.numpy(), np.sum(I_split.numpy()))
+        return I, I_split

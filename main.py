@@ -41,6 +41,8 @@ elif args.dataset == 'SVHN':
     dataset = SVHNDataset(args.batchsize)
 elif args.dataset == 'DSPRITES':
     dataset = DspritesDataset(args.batchsize)
+elif args.dataset == 'HEART':
+    dataset = HeartDataset(args.batchsize)
 else:
     print("Unknown dataset")
     exit(-1)
@@ -55,6 +57,8 @@ elif args.model == 'MMDVAE':
                       hidden=args.hidden, beta=args.beta)
 elif args.model == 'VLAE':
     network = VLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+elif args.model == 'CNNVLAE':
+    network = CNNVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
 elif args.model == 'MMDVLAE':
     network = MMDVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
 elif args.model == 'VAEGAN':
