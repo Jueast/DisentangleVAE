@@ -62,8 +62,8 @@ class HeartDataset(Dataset):
             
             #resize code
             im = im.crop((0,0,115,115))
-            im = im.resize((64, 64))
-            self.data_dims = [1, 64, 64]
+            im = im.resize((32, 32))
+            self.data_dims = [1, 32, 32]
 
             result.append(np.expand_dims(np.asarray(im)/256.0, 0))
             labels.append(0)

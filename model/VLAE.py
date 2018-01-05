@@ -258,7 +258,7 @@ class MMDVLAE(VLAE):
         return torch.mean(x_kernel) + torch.mean(y_kernel) - 2 * torch.mean(xy_kernel)
     def loss(self, recon_x, x, mu, logvar, z):
         x = x.view(x.size(0), -1)
-        BCE = self.reconstruct_loss(recon_x, x) / x.size(0)
+        BCE = self.reconstruct_loss(recon_x, x) / (x.size(0) * x.size(1))
         
         true_samples = Variable(torch.FloatTensor(x.size(0), self.nz).normal_())
         MMD = self.compute_mmd(true_samples, z)
@@ -287,19 +287,21 @@ class CNNVLAE(VAE):
         l = input_dims[1]
         l = int(l/2)
         self.encode_layers = [CNNEncodeLayer(self.nx, hidden, code_dims[1], batchnorm, activacation, (l, l))]
-        self.decode_layers = [CNNDecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))]
+        self.decode_layers = [CNNDecodeLayer(hidden*2, hidden, code_dims[1], batchnorm, activacation, (l, l))]
+        self.conv2 = nn.ConvTranspose2d(hidden, 1, 1, 1)
         for i in range(code_dims[0]-2):
             l = int(l/2)
-            el = CNNEncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))
-            dl = CNNDecodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l))
+            el = CNNEncodeLayer(hidden, hidden * 2, code_dims[1], batchnorm, activacation, (l, l))
+            hidden *= 2
+            dl = CNNDecodeLayer(hidden * 2, hidden, code_dims[1], batchnorm, activacation, (l, l))
             self.encode_layers.append(el)
             self.decode_layers.insert(0, dl)
         self.encode_layers = nn.ModuleList(self.encode_layers)
         self.decode_layers = nn.ModuleList(self.decode_layers)
         l = int(l/2)
-        self.encode_layers.append(CNNEncodeLayer(hidden, hidden, code_dims[1], batchnorm, activacation, (l, l)))
+        self.encode_layers.append(CNNEncodeLayer(hidden, hidden*2, code_dims[1], batchnorm, activacation, (l, l)))
+        hidden *= 2
         self.conv1 = CNNDecodeLayer(0, hidden, code_dims[1], batchnorm, activacation, (l, l))
-        self.conv2 = nn.ConvTranspose2d(hidden, 1, 1, 1)
 
     def encode(self, x):
         h = x

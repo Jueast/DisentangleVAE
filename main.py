@@ -13,6 +13,7 @@ parser.add_argument('--gamma', type=float, default=0.75)
 parser.add_argument('--num_rows', type=int, default=10)
 parser.add_argument('--visualizer', type=str, default="manifold")
 parser.add_argument('--lr',type=float, default=1e-3)
+parser.add_argument('--l2',type=float, default=2.5e-5)
 parser.add_argument('--log_interval', type=int, default=100)
 parser.add_argument('--maxiters', type=int, default=100000)
 parser.add_argument('--use_gui', dest='use_gui', action='store_true',
@@ -66,10 +67,10 @@ elif args.model == 'VAEGAN':
 else:
     print("Unknown model")
     exit(-1)
-
+print(network)
 if args.visualizer == 'manifold':
     visualizer = ManifoldVisualizer(args.savefolder, dataset.data_dims, args, network)
 else:
     visualizer = Visualizer(args.savefolder, dataset.data_dims, args)
-trainer = Trainer(network, dataset, visualizer, args, lr=args.lr)
+trainer = Trainer(network, dataset, visualizer, args, lr=args.lr, weight_decay=args.l2)
 trainer.train()
