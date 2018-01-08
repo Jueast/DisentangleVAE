@@ -82,6 +82,7 @@ class Trainer(object):
                                           momentum=self.momentum,
                                           weight_decay = self.weight_decay)
         if self.args.ngpus > 0:
+            self.network = nn.DataParallel(self.network, self.gpuids)
             self.network.cuda()
         self.network.train()
 
@@ -115,11 +116,7 @@ class Trainer(object):
                 imagesv = imagesv.cuda()
                 one.cuda()
                 mone.cuda()
-            if self.args.ngpus > 0:
-                recon_x, mu, logvar, z = nn.parallel.data_parallel(self.network,
-                                          images,self.gpuids)
-            else:
-                recon_x, mu, logvar, z = self.network(imagesv)
+            recon_x, mu, logvar, z = self.network(imagesv)
             encoder_loss, decoder_loss, GAN_loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
 
         
@@ -177,12 +174,14 @@ class Trainer(object):
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
+                torch.save(self.self)
             iteration += 1
            
         
     def VAEtrain(self):
         if self.args.ngpus > 0:
             self.network.cuda()
+            self.network = nn.DataParallel(self.network, self.gpuids)
         self.network.train()
         iteration = 0
         Loss_list = []
@@ -198,11 +197,7 @@ class Trainer(object):
             if self.cuda:
                 imagesv = imagesv.cuda()
             self.optimizer.zero_grad()
-            if self.args.ngpus > 0:
-                recon_x, mu, logvar, z = nn.parallel.data_parallel(self.network,
-                                          images,self.gpuids)
-            else:
-                recon_x, mu, logvar, z = self.network(imagesv)
+            recon_x, mu, logvar, z = self.network(imagesv)
             loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
             loss.backward()
             self.optimizer.step()
@@ -233,6 +228,8 @@ class Trainer(object):
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
+            if iteration % (self.args.log_interval * 10) == 0:
+                torch.save(self.network.state_dict(), "out/model.pt")
             iteration += 1
 
             

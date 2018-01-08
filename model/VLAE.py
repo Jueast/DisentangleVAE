@@ -70,7 +70,7 @@ class CNNDecodeLayer(nn.Module):
         if batchnorm:
             main = nn.Sequential(
                 nn.ConvTranspose2d(input, output,  4, stride=2, padding=1),
-                nn.BatchNorm1d(output),
+                nn.BatchNorm2d(output),
                 self.act,
             )
         else:
@@ -267,7 +267,7 @@ class MMDVLAE(VLAE):
 class CNNVLAE(VAE):
     def __init__(self, input_dims, code_dims, beta=1.0,
                  hidden=400, activacation="lrelu",
-                 decoder="Bernoulli", batchnorm=False):
+                 decoder="Bernoulli", batchnorm=True):
 
         super(CNNVLAE, self).__init__(input_dims, code_dims)
         self.name = "CNNVLAE"

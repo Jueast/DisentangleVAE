@@ -1,5 +1,5 @@
 from dataset import Dataset
-from PIL import Image
+from PIL import Image, ImageFilter
 import torchvision.transforms as transforms
 import torch.utils.data as tdata
 import torch
@@ -56,14 +56,15 @@ class HeartDataset(Dataset):
                        if os.path.isfile(join(data_root, x)) and x.endswith("jpg") ]
         result = []
         labels = []
+        #resize code
+        self.data_dims = [1, 32, 32]
         for imgname in image_list:
             
             im = Image.open(imgname)
             
-            #resize code
             im = im.crop((0,0,115,115))
-            im = im.resize((32, 32))
-            self.data_dims = [1, 32, 32]
+            im = im.filter((ImageFilter.MedianFilter(size=5)))
+            im = im.resize(self.data_dims[1:])
 
             result.append(np.expand_dims(np.asarray(im)/256.0, 0))
             labels.append(0)
