@@ -7,9 +7,13 @@ class Trainer(object):
 
     def __init__(self, network, dataset, visualizer,
                  args, optimizer="Adam", lr=1e-3, momentum=0.9, weight_decay=0):
+        self.model_name = network.name
+        self.loss = network.loss
+        self.mutual_info_q= network.mutual_info_q
         if args.ngpus > 0:
-            self.network = network.cuda()
             self.gpuids = range(args.ngpus)
+            self.network = nn.DataParallel(network, self.gpuids).cuda()
+            print("running with gpu %s" % str(self.gpuids))
         else:
             self.network = network
         self.dataset = dataset
@@ -17,7 +21,7 @@ class Trainer(object):
         self.args = args
         self.maxiters = args.maxiters
         self.cuda = args.ngpus > 0
-        if self.network.name == 'VAEGAN':
+        if self.model_name == 'VAEGAN':
             self.lr= lr
             self.weight_decay = weight_decay
             self.momentum = momentum
@@ -41,7 +45,7 @@ class Trainer(object):
     
     
     def train(self):
-        if self.network.name != 'VAEGAN':
+        if self.model_name != 'VAEGAN':
             self.VAEtrain()
         else:
             self.VAEGANtrain()
@@ -81,9 +85,6 @@ class Trainer(object):
                                           lr=self.lr,
                                           momentum=self.momentum,
                                           weight_decay = self.weight_decay)
-        if self.args.ngpus > 0:
-            self.network = nn.DataParallel(self.network, self.gpuids)
-            self.network.cuda()
         self.network.train()
 
         def regForBackward(paras, value):
@@ -110,12 +111,12 @@ class Trainer(object):
             one = torch.FloatTensor([1.0])
             mone = one * -1
             
-            if iteration == 0:
-                spv = imagesv
             if self.cuda:
                 imagesv = imagesv.cuda()
-                one.cuda()
-                mone.cuda()
+                one = one.cuda()
+                mone = mone.cuda()
+            if iteration == 0:
+                spv = imagesv
             recon_x, mu, logvar, z = self.network(imagesv)
             encoder_loss, decoder_loss, GAN_loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
 
@@ -141,7 +142,7 @@ class Trainer(object):
         #    for p in self.network.D.parameters():
         #        p.data.clamp_(clamp_lower, clamp_upper)
             #regForBackward(D_parameters, False)
-            minfo, minfo_split = self.network.mutual_info_q(imagesv)
+            minfo, minfo_split = self.mutual_info_q(imagesv)
             if iteration % (int(self.args.log_interval/10)) == 0:
                 Encoder_Loss_list.append(encoder_loss.data[0])
                 Decoder_Loss_list.append(decoder_loss.data[0])
@@ -149,7 +150,7 @@ class Trainer(object):
                 BCE_list.append(BCE.data[0])
                 KLD_list.append(KLD.data[0])
                 MInfo_list.append(minfo[0])
-                MInfo_split_list.append(minfo_split.numpy())
+                MInfo_split_list.append(minfo_split.cpu().numpy())
             if iteration % self.args.log_interval == 0:
                 print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tEncoderLoss:{:6f}\tDecoderLoss:{:6f}\n\t\t\tDisLoss:{:6f}\tMInfo:{:6f}'.format(
                     iteration,
@@ -179,9 +180,6 @@ class Trainer(object):
            
         
     def VAEtrain(self):
-        if self.args.ngpus > 0:
-            self.network.cuda()
-            self.network = nn.DataParallel(self.network, self.gpuids)
         self.network.train()
         iteration = 0
         Loss_list = []
@@ -192,22 +190,22 @@ class Trainer(object):
         while(iteration < self.maxiters):
             images, _ = self.dataset.next_batch()
             imagesv = Variable(images)
-            if iteration == 0:
-                spv = imagesv
             if self.cuda:
                 imagesv = imagesv.cuda()
+            if iteration == 0:
+                spv = imagesv
             self.optimizer.zero_grad()
             recon_x, mu, logvar, z = self.network(imagesv)
-            loss, BCE, KLD = self.network.loss(recon_x, imagesv, mu, logvar, z)
+            loss, BCE, KLD = self.loss(recon_x, imagesv, mu, logvar, z)
             loss.backward()
             self.optimizer.step()
-            minfo, minfo_split = self.network.mutual_info_q(imagesv)
+            minfo, minfo_split = self.mutual_info_q(imagesv)
             if iteration % (int(self.args.log_interval/10)) == 0:
                 Loss_list.append(loss.data[0])
                 BCE_list.append(BCE.data[0])
                 KLD_list.append(KLD.data[0])
                 MInfo_list.append(minfo[0])
-                MInfo_split_list.append(minfo_split.numpy())
+                MInfo_split_list.append(minfo_split.cpu().numpy())
             if iteration % self.args.log_interval == 0:
                 print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}\tMInfo:{:6f}'.format(
                     iteration,

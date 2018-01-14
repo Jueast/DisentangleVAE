@@ -43,7 +43,7 @@ class ManifoldVisualizer(Visualizer):
         z_dim.insert(0, self.args.num_rows * self.args.num_rows)
 
         num_rows = self.args.num_rows
-        code_x = torch.linspace(-2, 2, steps=num_rows).view(1, num_rows).repeat(num_rows, 1)
+        code_x = torch.FloatTensor(np.linspace(-2, 2, num_rows)).view(1, num_rows).repeat(num_rows, 1).cuda()
         code_y = code_x.t()
         if self.args.ngpus > 0:
             self.z = torch.cuda.FloatTensor(*z_dim).normal_()
@@ -54,7 +54,7 @@ class ManifoldVisualizer(Visualizer):
 
     def make_code(self, num_rows):
         z_dim = [int(np.prod(self.network.code_dims))]
-        code_x = torch.linspace(-2, 2, steps=num_rows).view(1, num_rows).repeat(num_rows, 1)
+        code_x = torch.cuda.FloatTensor(np.linspace(-2, 2, num_rows)).view(1, num_rows).repeat(num_rows, 1)
         code_y = code_x.t()
         if self.args.ngpus > 0:
             z = torch.cuda.FloatTensor(*z_dim).normal_()

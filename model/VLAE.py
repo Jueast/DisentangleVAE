@@ -190,12 +190,13 @@ class VLAE(VAE):
 
     def reparametrize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()
-        if isinstance(mu, torch.cuda.FloatTensor):
+        if mu.is_cuda:
             eps = torch.cuda.FloatTensor(std.size()).normal_()
+            eps = Variable(eps).cuda()
         else:
             eps = torch.FloatTensor(std.size()).normal_()
 #        eps[:,-2:-1] = (eps[:,-2:-1] - mu.data[:,-2:-1]) / std.data[:,-2:-1]
-        eps = Variable(eps)
+            eps = Variable(eps)
         return eps.mul(std).add_(mu) 
     
     def decode(self, z):
@@ -232,8 +233,8 @@ class VLAE(VAE):
         p_split_matrix = (- (z - mu) ** 2  / logvar.exp() / 2.0 - 0.5 * logvar ).exp_()
         p_split_vector = torch.sum(p_split_matrix, dim=1)
         p_vector =  torch.sum(p_matrix, dim=1)
-        I = torch.FloatTensor([np.log(l)])
-        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2)))
+        I = torch.FloatTensor([np.log(l)]).cuda()
+        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2))).cuda()
         for i in range(l):
             I += (p_matrix[i][i].log() - p_vector[i].log()).data / l
             I_split += (p_split_matrix[i][i].log() - p_split_vector[i].log()).data / l
@@ -260,7 +261,7 @@ class MMDVLAE(VLAE):
         x = x.view(x.size(0), -1)
         BCE = self.reconstruct_loss(recon_x, x) / (x.size(0) * x.size(1))
         
-        true_samples = Variable(torch.FloatTensor(x.size(0), self.nz).normal_())
+        true_samples = Variable(torch.FloatTensor(x.size(0), self.nz).normal_()).cuda()
         MMD = self.compute_mmd(true_samples, z)
         return BCE + self.beta *  MMD , BCE, MMD
 
@@ -315,12 +316,13 @@ class CNNVLAE(VAE):
 
     def reparametrize(self, mu, logvar):
         std = logvar.mul(0.5).exp_()
-        if isinstance(mu, torch.cuda.FloatTensor):
+        if mu.is_cuda:
             eps = torch.cuda.FloatTensor(std.size()).normal_()
+            eps = Variable(eps).cuda()
         else:
             eps = torch.FloatTensor(std.size()).normal_()
 #        eps[:,-2:-1] = (eps[:,-2:-1] - mu.data[:,-2:-1]) / std.data[:,-2:-1]
-        eps = Variable(eps)
+            eps = Variable(eps)
         return eps.mul(std).add_(mu) 
     
     def decode(self, z):
@@ -362,8 +364,8 @@ class CNNVLAE(VAE):
         p_split_matrix = (- (z - mu) ** 2  / logvar.exp() / 2.0 - 0.5 * logvar ).exp_()
         p_split_vector = torch.sum(p_split_matrix, dim=1)
         p_vector =  torch.sum(p_matrix, dim=1)
-        I = torch.FloatTensor([np.log(l)])
-        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2)))
+        I = torch.FloatTensor([np.log(l)]).cuda()
+        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2))).cuda()
         for i in range(l):
             I += (p_matrix[i][i].log() - p_vector[i].log()).data / l
             I_split += (p_split_matrix[i][i].log() - p_split_vector[i].log()).data / l

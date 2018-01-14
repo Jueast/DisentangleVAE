@@ -1,5 +1,6 @@
 
 import argparse
+import torch
 parser = argparse.ArgumentParser()
 parser.add_argument('--ngpus', type=int, default=4)
 parser.add_argument('--dataset', type=str, default='MNIST')
@@ -47,7 +48,8 @@ elif args.dataset == 'HEART':
 else:
     print("Unknown dataset")
     exit(-1)
-
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
+os.environ['CUDA_VISIBLE_DEVICES'] = '5,6,7,8'
 if args.model == 'VAE':
     network = NaiveVAE(dataset.data_dims, [args.dimz], hidden=args.hidden)
 elif args.model == 'betaVAE':
