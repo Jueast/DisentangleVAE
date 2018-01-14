@@ -106,3 +106,5 @@ dataset/dSprites_data
 #vscode
 .vscode/
 out/*.tar.gz
+out/*
+

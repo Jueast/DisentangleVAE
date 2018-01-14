@@ -175,7 +175,6 @@ class Trainer(object):
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
-                torch.save(self.self)
             iteration += 1
            
         
@@ -227,7 +226,7 @@ class Trainer(object):
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
             if iteration % (self.args.log_interval * 10) == 0:
-                torch.save(self.network.state_dict(), "out/model.pt")
+                torch.save(self.network, "out/model.pt")
             iteration += 1
 
             
