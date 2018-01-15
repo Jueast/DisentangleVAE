@@ -65,9 +65,14 @@ class HeartDataset(Dataset):
         for data_dir in data_list_dir:
             image_list = [ join(data_dir, x) for x in os.listdir(data_dir)
                         if os.path.isfile(join(data_dir, x)) and x.endswith("jpg") ]
-            #resize code
+            if "normal" in data_dir:
+                l = 0
+            else:
+                l = 1
+            print("process %s, label is %d" % (data_dir, l))
+            num = 0
             for imgname in image_list:
-                
+                num += 1
                 im = Image.open(imgname)
                 
                 im = im.crop((0,0,115,115))
@@ -75,16 +80,16 @@ class HeartDataset(Dataset):
                 im = im.resize(self.data_dims[1:])
 
                 result.append(np.expand_dims(np.asarray(im)/256.0, 0))
-                labels.append(0)
+                labels.append(l)
+            print("process ok! nums: %d" % num)
         imgs = torch.from_numpy(np.asarray(result, dtype=np.float32))
         labels = torch.from_numpy(np.asarray(labels, dtype=np.int32))
-        print("Dataset shape: %s" % str(tuple(imgs.size())))
-        print(imgs)       
+        print("Dataset shape: %s" % str(tuple(imgs.size())))       
         return tdata.TensorDataset(imgs, labels)
 
 if __name__ == '__main__':
     batchsize = 25
-    heart_data = HeartDataset(batchsize, name='train')
+    heart_data = HeartDataset(batchsize, name='validation')
     print(len(heart_data))
     while True:
         sample_image, _ = heart_data.next_batch()
