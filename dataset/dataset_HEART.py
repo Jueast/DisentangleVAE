@@ -10,18 +10,15 @@ from matplotlib import pyplot as plt
 
 class HeartDataset(Dataset):
     
-    def __init__(self, batchsize, train=True):
+    def __init__(self, batchsize, name='train/target_normal', recursive=True, data_dims = [1, 32, 32]):
         Dataset.__init__(self)
         data_root = join(dirname(realpath(__file__)), 'HEART_data')
         self.name = "heart"
         self.range = [0.0, 1.0]
-        self.data_dims = [1, 115, 120]
+        self.data_dims = data_dims
         self.batchsize = batchsize
-        if train:
-            data_root = join(data_root, 'train/target_normal')
-        else:
-            data_root = join(data_root, 'validate/target_normal')
-        self.data = self.process(data_root)    
+        data_root = join(data_root, name)
+        self.data = self.process(data_root, recursive)    
         self.dataloder = tdata.DataLoader(self.data, self.batchsize, shuffle=True)
         self.iter = iter(self.dataloder)
         self._index = 0
@@ -51,23 +48,34 @@ class HeartDataset(Dataset):
     def image(self, image):
         return np.clip(image, a_min=0.0, a_max=1.0)
     
-    def process(self, data_root):
-        image_list = [ join(data_root, x) for x in os.listdir(data_root)
-                       if os.path.isfile(join(data_root, x)) and x.endswith("jpg") ]
+    def process(self, data_root, recursive):
+        data_list_dir = []
+        if recursive:
+            def visit_dir(d, stop=False):
+                data_list_dir.append(d)
+                dir_list = [ join(d, x) for x in os.listdir(d) if os.path.isdir(join(d, x))]
+                for sub_d in dir_list:
+                    visit_dir(sub_d)
+            visit_dir(data_root)
+        else:
+            data_list_dir.append(data_root)
+        print(data_list_dir)
         result = []
         labels = []
-        #resize code
-        self.data_dims = [1, 32, 32]
-        for imgname in image_list:
-            
-            im = Image.open(imgname)
-            
-            im = im.crop((0,0,115,115))
-            im = im.filter((ImageFilter.MedianFilter(size=5)))
-            im = im.resize(self.data_dims[1:])
+        for data_dir in data_list_dir:
+            image_list = [ join(data_dir, x) for x in os.listdir(data_dir)
+                        if os.path.isfile(join(data_dir, x)) and x.endswith("jpg") ]
+            #resize code
+            for imgname in image_list:
+                
+                im = Image.open(imgname)
+                
+                im = im.crop((0,0,115,115))
+                im = im.filter((ImageFilter.MedianFilter(size=5)))
+                im = im.resize(self.data_dims[1:])
 
-            result.append(np.expand_dims(np.asarray(im)/256.0, 0))
-            labels.append(0)
+                result.append(np.expand_dims(np.asarray(im)/256.0, 0))
+                labels.append(0)
         imgs = torch.from_numpy(np.asarray(result, dtype=np.float32))
         labels = torch.from_numpy(np.asarray(labels, dtype=np.int32))
         print("Dataset shape: %s" % str(tuple(imgs.size())))
@@ -76,7 +84,7 @@ class HeartDataset(Dataset):
 
 if __name__ == '__main__':
     batchsize = 25
-    heart_data = HeartDataset(batchsize)
+    heart_data = HeartDataset(batchsize, name='train')
     print(len(heart_data))
     while True:
         sample_image, _ = heart_data.next_batch()
