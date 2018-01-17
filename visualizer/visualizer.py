@@ -46,10 +46,10 @@ class ManifoldVisualizer(Visualizer):
         code_x = torch.FloatTensor(np.linspace(-2, 2, num_rows)).view(1, num_rows).repeat(num_rows, 1).cuda()
         code_y = code_x.t()
         if self.args.ngpus > 0:
-            self.z = torch.cuda.FloatTensor(1, z_dim[1]).normal_().expand(*z_dim)
+            self.z = torch.cuda.FloatTensor(1, z_dim[1]).normal_().repeat(*z_dim)
             self.code = torch.stack([code_x, code_y], dim=2).view(-1,2).cuda()
         else:
-            self.z = torch.FloatTensor(1, z_dim[1]).normal_().expand(*z_dim)
+            self.z = torch.FloatTensor(1, z_dim[1]).normal_().repeat(*z_dim)
             self.code = torch.stack([code_x, code_y], dim=2).view(-1,2)
 
     def make_code(self, num_rows):
@@ -80,7 +80,7 @@ class ManifoldVisualizer(Visualizer):
         num_rows = int(len(imgs) ** 0.5)
         code = self.make_code(num_rows)
         recons,_,_,zcode = self.network(imgs)
-        zcode = zcode[1,:].expand(zcode.size())
+        zcode = zcode[1,:].repeat(zcode.size())
         recons = recons.sigmoid().data
         cuname = os.path.join(self.plotfolder, 'recon_' + self.name + '_current.png')
         save_image(recons.view(self.imagedim), cuname, nrow=num_rows)
