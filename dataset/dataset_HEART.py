@@ -47,7 +47,8 @@ class HeartDataset(Dataset):
 
     def image(self, image):
         return np.clip(image, a_min=0.0, a_max=1.0)
-    
+    def total_data(self):
+        return self.data.data_tensor, self.data.target_tensor
     def process(self, data_root, recursive):
         data_list_dir = []
         if recursive:
