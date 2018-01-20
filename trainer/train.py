@@ -211,6 +211,8 @@ class Trainer(object):
                 if self.valid_dataset:
                     self.network.eval()
                     vimgs = Variable(self.valid_dataset.next_batch()[0])
+                    if self.cuda:
+                        vimgs = vimgs.cuda()
                     recon_v, mu_v, logvar_v, z_v = self.network(vimgs)
                     _, vbce, _ = self.loss(recon_v, vimgs, mu_v, logvar_v, z_v)
                     self.network.train()
