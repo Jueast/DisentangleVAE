@@ -25,23 +25,31 @@ class CNNEncodeLayer(nn.Module):
                 nn.Conv2d(input, output,  4, stride=2, padding=1),
                 nn.BatchNorm2d(output),
                 self.act,
+                nn.Conv2d(output, output,  3, stride=1, padding=1),
+                nn.BatchNorm2d(output), 
+                self.act,
             )
-            main2 = nn.Sequential(
-                nn.Conv2d(input, output,  4, stride=2, padding=1),
+            code = nn.Sequential(
+                nn.Conv2d(output, output,  3, stride=1, padding=1),
                 nn.BatchNorm2d(output),
                 self.act,
             )
         else:
             main = nn.Sequential(
                 nn.Conv2d(input, output,  4, stride=2, padding=1),
+                nn.BatchNorm2d(output),
+                self.act,
+                nn.Conv2d(output, output,  3, stride=1, padding=1),
+		nn.BatchNorm2d(output), 
                 self.act,
             )
-            main2 = nn.Sequential(
-                nn.Conv2d(input, output,  4, stride=2, padding=1),
+            code = nn.Sequential(
+                nn.Conv2d(output, output,  3, stride=1, padding=1),
+                nn.BatchNorm2d(output),
                 self.act,
             )
         self.main = main 
-        self.main2 = main2
+        self.code = code
         self.fc1 = nn.Linear(output * out_img_dims[0] * out_img_dims[1], zdim)
         self.fc2 = nn.Linear(output * out_img_dims[0] * out_img_dims[1], zdim)
         self.out_img_dims = out_img_dims
@@ -50,7 +58,7 @@ class CNNEncodeLayer(nn.Module):
     def forward(self, x):
 
         h = self.main(x)
-        h2 = self.main2(x)
+        h2 = self.code(h)
         return h, self.fc1(h2.view(h2.size(0), -1)), self.fc2(h2.view(h2.size(0), -1))
 
 class CNNDecodeLayer(nn.Module):
@@ -72,10 +80,15 @@ class CNNDecodeLayer(nn.Module):
                 nn.ConvTranspose2d(input, output,  4, stride=2, padding=1),
                 nn.BatchNorm2d(output),
                 self.act,
+                nn.ConvTranspose2d(output, output, 3, stride=1, padding=1),
+                nn.BatchNorm2d(output),
+                self.act,
             )
         else:
             main = nn.Sequential(
                 nn.ConvTranspose2d(input, output,  4, stride=2, padding=1),
+                self.act,
+                nn.ConvTranspose2d(output, output, 3, stride=1, padding=1),
                 self.act,
             )
         self.main = main

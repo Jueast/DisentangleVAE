@@ -6,7 +6,7 @@ import torch
 class Trainer(object):
 
     def __init__(self, network, dataset, visualizer,
-                 args, optimizer="Adam", lr=1e-3, momentum=0.9, weight_decay=0):
+                 args, lr=1e-3, momentum=0.9, weight_decay=0):
         self.model_name = network.name
         self.loss = network.loss
         self.mutual_info_q= network.mutual_info_q
@@ -25,8 +25,9 @@ class Trainer(object):
             self.lr= lr
             self.weight_decay = weight_decay
             self.momentum = momentum
-            self.optimizer = optimizer
+            self.optimizer = args.optim
         else:
+            optimizer = args.optim
             if optimizer == "Adam":
                 self.optimizer = optim.Adam(self.network.parameters(),
                                             lr=lr,

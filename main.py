@@ -13,6 +13,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--ngpus', type=int, default=4)
 	parser.add_argument('--dataset', type=str, default='MNIST')
+	parser.add_argument('--optim', type=str, default='Adam')
 	parser.add_argument('--model', type=str, default='VAE')
 	parser.add_argument('--savefolder', type=str, default='out')
 	parser.add_argument('--hidden', type=int, default=400)
