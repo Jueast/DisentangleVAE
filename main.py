@@ -21,6 +21,7 @@ if __name__ == "__main__":
 	parser.add_argument('--hlayers', type=int, default=3)
 	parser.add_argument('--beta', type=float, default=1.0)
 	parser.add_argument('--gamma', type=float, default=0.75)
+	parser.add_argument('--dataset_split', type=str, default="train")
 	parser.add_argument('--num_rows', type=int, default=10)
 	parser.add_argument('--visualizer', type=str, default="manifold")
 	parser.add_argument('--lr',type=float, default=1e-3)
@@ -33,7 +34,7 @@ if __name__ == "__main__":
 	parser.add_argument('--visible_gpus', type=str, default="3,6,7")
 	args = parser.parse_args()
 
-
+	valid_dataset = None
 	if args.dataset == 'MNIST':
 	    dataset = MnistDataset(args.batchsize)
 	elif args.dataset == 'SVHN':
@@ -41,13 +42,15 @@ if __name__ == "__main__":
 	elif args.dataset == 'DSPRITES':
 	    dataset = DspritesDataset(args.batchsize)
 	elif args.dataset == 'HEART':
-	    dataset = HeartDataset(args.batchsize)
+		dataset = HeartDataset(args.batchsize, name=args.dataset_split)
+		valid_dataset = HeartDataset(args.batchsize, name="validation")
 	else:
 	    print("Unknown dataset")
 	    exit(-1)
-	torch.set_default_tensor_type('torch.cuda.FloatTensor')
-	os.environ['CUDA_VISIBLE_DEVICES'] = args.visible_gpus
-	torch.cuda.manual_seed_all(args.seed)
+	if args.ngpus > 0:
+		torch.set_default_tensor_type('torch.cuda.FloatTensor')
+		os.environ['CUDA_VISIBLE_DEVICES'] = args.visible_gpus
+		torch.cuda.manual_seed_all(args.seed)
 	torch.manual_seed(args.seed)
 		
 	if args.model == 'VAE':
@@ -74,5 +77,5 @@ if __name__ == "__main__":
 	    visualizer = ManifoldVisualizer(args.savefolder, dataset.data_dims, args, network)
 	else:
 	    visualizer = Visualizer(args.savefolder, dataset.data_dims, args)
-	trainer = Trainer(network, dataset, visualizer, args, lr=args.lr, weight_decay=args.l2)
+	trainer = Trainer(network, dataset, visualizer, args, lr=args.lr, weight_decay=args.l2, valid_dataset=valid_dataset)
 	trainer.train()

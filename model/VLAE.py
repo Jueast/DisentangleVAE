@@ -377,8 +377,12 @@ class CNNVLAE(VAE):
         p_split_matrix = (- (z - mu) ** 2  / logvar.exp() / 2.0 - 0.5 * logvar ).exp_()
         p_split_vector = torch.sum(p_split_matrix, dim=1)
         p_vector =  torch.sum(p_matrix, dim=1)
-        I = torch.FloatTensor([np.log(l)]).cuda()
-        I_split = torch.FloatTensor([np.log(l)] * int(z.size(2))).cuda()
+        if mu.is_cuda:
+            I = torch.FloatTensor([np.log(l)]).cuda()
+            I_split = torch.FloatTensor([np.log(l)] * int(z.size(2))).cuda()
+        else:
+            I = torch.FloatTensor([np.log(l)])
+            I_split = torch.FloatTensor([np.log(l)] * int(z.size(2)))
         for i in range(l):
             I += (p_matrix[i][i].log() - p_vector[i].log()).data / l
             I_split += (p_split_matrix[i][i].log() - p_split_vector[i].log()).data / l

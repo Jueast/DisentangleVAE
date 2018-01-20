@@ -6,7 +6,7 @@ import torch
 class Trainer(object):
 
     def __init__(self, network, dataset, visualizer,
-                 args, lr=1e-3, momentum=0.9, weight_decay=0):
+                 args, lr=1e-3, momentum=0.9, weight_decay=0, valid_dataset=None):
         self.model_name = network.name
         self.loss = network.loss
         self.mutual_info_q= network.mutual_info_q
@@ -17,6 +17,7 @@ class Trainer(object):
         else:
             self.network = network
         self.dataset = dataset
+        self.valid_dataset = valid_dataset
         self.visualizer = visualizer
         self.args = args
         self.maxiters = args.maxiters
@@ -185,6 +186,7 @@ class Trainer(object):
         Loss_list = []
         BCE_list = []
         KLD_list = []
+        VBCE_list = []
         MInfo_list = []
         MInfo_split_list = []
         while(iteration < self.maxiters):
@@ -206,8 +208,15 @@ class Trainer(object):
                 KLD_list.append(KLD.data[0])
                 MInfo_list.append(minfo[0])
                 MInfo_split_list.append(minfo_split.cpu().numpy())
+                if self.valid_dataset:
+                    self.network.eval()
+                    vimgs = Variable(self.valid_dataset.next_batch()[0])
+                    recon_v, mu_v, logvar_v, z_v = self.network(vimgs)
+                    _, vbce, _ = self.loss(recon_v, vimgs, mu_v, logvar_v, z_v)
+                    self.network.train()
+                    VBCE_list.append(vbce.data[0])
             if iteration % self.args.log_interval == 0:
-                print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}\tMInfo:{:6f}'.format(
+                print('#Iter: {}\tTrain Epoch: {}[{}/{}({}%)]\tLoss:{:6f}\tMInfo:{:6f}\t'.format(
                     iteration,
                     self.dataset.epoch(),
                     self.dataset.index() * len(images),
@@ -226,6 +235,7 @@ class Trainer(object):
                 self.visualizer.plot(MInfo_list, "MINFO")
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
+                self.visualizer.plot(VBCE_list,"Validate BCE")
             if iteration % (self.args.log_interval * 10) == 0:
                 torch.save(self.network, "out/model.pt")
             iteration += 1
