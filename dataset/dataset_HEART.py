@@ -18,7 +18,9 @@ class HeartDataset(Dataset):
         self.data_dims = data_dims
         self.batchsize = batchsize
         data_root = join(data_root, name)
-        self.data = self.process(data_root, recursive)    
+        imgs, labels = self.process(data_root, recursive)
+        self.numpy_data = (imgs.numpy(), labels.numpy())
+        self.data = tdata.TensorDataset(imgs, labels)
         self.dataloder = tdata.DataLoader(self.data, self.batchsize, shuffle=True)
         self.iter = iter(self.dataloder)
         self._index = 0
@@ -86,7 +88,7 @@ class HeartDataset(Dataset):
         imgs = torch.from_numpy(np.asarray(result, dtype=np.float32))
         labels = torch.from_numpy(np.asarray(labels, dtype=np.int32))
         print("Dataset shape: %s" % str(tuple(imgs.size())))       
-        return tdata.TensorDataset(imgs, labels)
+        return imgs, labels
 
 if __name__ == '__main__':
     batchsize = 25

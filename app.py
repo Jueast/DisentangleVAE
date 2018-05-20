@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 from dataset import *
 from model import *
 from trainer import *
@@ -16,16 +18,18 @@ def init(model_name, data_dir, batchsize=1):
     dataset = HeartDataset(batchsize, data_dir)
     return model, dataset
 
-def make_cmp_plot(model, dataset):
+def make_cmp_plot(model, dataset, model_name):
     imgs,_ = dataset.next_batch()
     imgs_figure = make_grid(imgs, nrow=int((imgs.size(0) ** 0.5))).numpy()
     new_imgs, mu, logvar, z = model(Variable(imgs))
     new_img_figure = make_grid(new_imgs.sigmoid().data, nrow=int((new_imgs.size(0) ** 0.5))).numpy()
-    plt.figure(1)
+    plt.figure(num="recon_cmp", figsize=(8,4))
+
+    plt.subplot(1,2,1)
     plt.imshow(np.moveaxis(imgs_figure, 0, -1))
-    plt.figure(2)
+    plt.subplot(1,2,2)
     plt.imshow(np.moveaxis(new_img_figure, 0, -1))
-    plt.show()
+    plt.savefig("%s_recon_cmp.png" % model_name)
 
 def show_distri(model, dataset):
     imgs, labels = dataset.total_data()
@@ -39,4 +43,4 @@ def show_distri(model, dataset):
         plt.xlabel('z%d' % i)
         plt.ylabel('z%d' % (i+1))
     plt.show()
-        
+

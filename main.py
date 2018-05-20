@@ -11,7 +11,7 @@ import argparse
 import torch
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--ngpus', type=int, default=4)
+	parser.add_argument('--ngpus', type=int, default=2)
 	parser.add_argument('--dataset', type=str, default='MNIST')
 	parser.add_argument('--optim', type=str, default='Adam')
 	parser.add_argument('--model', type=str, default='VAE')
@@ -30,8 +30,9 @@ if __name__ == "__main__":
 	parser.add_argument('--maxiters', type=int, default=100000)
 	parser.add_argument('--batchsize', type=int, default=100)
 	parser.add_argument('--parts', type=int, default=2)
-	parser.add_argument('--seed', type=int, default=115414)
-	parser.add_argument('--visible_gpus', type=str, default="3,6,7")
+	parser.add_argument('--seed', type=int, default=114514)
+	parser.add_argument('--visible_gpus', type=str, default="6,7")
+	parser.add_argument('--batchnorm', action="store_true")
 	args = parser.parse_args()
 
 	valid_dataset = None
@@ -62,11 +63,11 @@ if __name__ == "__main__":
 	    network = MMDVAE(dataset.data_dims, [args.dimz],
 			      hidden=args.hidden, beta=args.beta)
 	elif args.model == 'VLAE':
-	    network = VLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+	    network = VLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta, batchnorm=args.batchnorm)
 	elif args.model == 'CNNVLAE':
-	    network = CNNVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+	    network = CNNVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta, batchnorm=args.batchnorm)
 	elif args.model == 'MMDVLAE':
-	    network = MMDVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta)
+	    network = MMDVLAE(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta, batchnorm=args.batchnorm)
 	elif args.model == 'VAEGAN':
 	    network = VAEGAN(dataset.data_dims, [args.hlayers, int(args.dimz / args.hlayers)], hidden=args.hidden, beta=args.beta, gamma=args.gamma)
 	else:

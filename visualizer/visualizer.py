@@ -11,7 +11,7 @@ class Visualizer(object):
         self.savefolder = savefolder
         self.save_epoch = 0
         self.name = "default"
-        self.plotfolder = os.path.join(savefolder, "plot")
+        self.plotfolder = os.path.join("out_%s_%s_%d_%d_%d_%f_%f_%d" % (args.dataset, args.model, args.hidden, args.dimz, args.hlayers, args.beta, args.lr, args.batchsize ), "plot")
         self.imagedim = imgdim
         self.imagedim.insert(0, -1)
         self.args = args

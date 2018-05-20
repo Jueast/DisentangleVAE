@@ -238,8 +238,8 @@ class Trainer(object):
                 self.visualizer.mulitplot(MInfo_split_list, "MINFO FOR SPECFIC Z")
                 self.visualizer.visualize_reconstruct(spv)
                 self.visualizer.plot(VBCE_list,"Validate BCE")
-            if iteration % (self.args.log_interval * 10) == 0:
-                torch.save(self.network, "out/model.pt")
+            if iteration % (self.args.log_interval * 50) == 0:
+                torch.save(self.network, "out_%s_%s_%d_%d_%d_%f_%f_%d/model.pt" % (self.args.dataset, self.args.model, self.args.hidden, self.args.dimz, self.args.hlayers, self.args.beta, self.args.lr, self.args.batchsize ))
             iteration += 1
 
             
